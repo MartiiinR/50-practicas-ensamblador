@@ -11,8 +11,8 @@ result: .asciz "La resta es: %d\n"
 
 _start:
     // Asignamos los valores para la operación de resta
-    mov x0, #20             // Minuendo (ejemplo: 20)
-    mov x1, #5              // Sustraendo (ejemplo: 5)
+    mov x0, #37             // Minuendo (ejemplo: 20)
+    mov x1, #23             // Sustraendo (ejemplo: 5)
 
     // Realizamos la resta
     sub x2, x0, x1          // x2 = x0 - x1, almacena el resultado en x2
