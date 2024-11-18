@@ -4,7 +4,7 @@
 // Asciinema: 
 
 .section .data
-cadena: .asciz "anilina"              // La cadena a verificar
+cadena: .asciz "reconocer"              // La cadena a verificar
 resultado_palindromo: .asciz "Es un palíndromo\n"
 resultado_no_palindromo: .asciz "No es un palíndromo\n"
 
