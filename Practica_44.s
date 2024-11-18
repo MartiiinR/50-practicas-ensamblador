@@ -1,6 +1,6 @@
 // Autor: Ruiz Barcenas Martin Adolfo
 // Fecha: 09-11-2024
-// Descripción: Gneracion de numeros aleatorios
+// Descripción: Generacion de numeros aleatorios
 // Asciinema: 
 
   .section .data
