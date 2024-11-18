@@ -11,8 +11,8 @@ result: .asciz "El producto es: %d\n"
 
 _start:
     // Asignamos los valores para la multiplicación
-    mov x0, #6              // Primer factor (ejemplo: 6)
-    mov x1, #7              // Segundo factor (ejemplo: 7)
+    mov x0, #8              // Primer factor (ejemplo: 6)
+    mov x1, #12              // Segundo factor (ejemplo: 7)
 
     // Realizamos la multiplicación
     mul x2, x0, x1          // x2 = x0 * x1, almacena el resultado en x2
