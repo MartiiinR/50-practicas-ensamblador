@@ -11,8 +11,8 @@ result: .asciz "El cociente es: %d\n"
 
 _start:
     // Asignamos los valores para la división
-    mov x0, #20             // Dividendo (ejemplo: 20)
-    mov x1, #4              // Divisor (ejemplo: 4)
+    mov x0, #36             // Dividendo (ejemplo: 20)
+    mov x1, #6             // Divisor (ejemplo: 4)
 
     // Realizamos la división
     udiv x2, x0, x1         // x2 = x0 / x1, almacena el cociente en x2
