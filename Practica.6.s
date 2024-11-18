@@ -11,7 +11,7 @@ result: .asciz "La suma de los primeros %d números naturales es: %d\n"
 
 _start:
     // Definimos el valor de N (número de términos)
-    mov x0, #10             // N = 10 (calcularemos la suma de los primeros 10 números naturales)
+    mov x0, #15             // N = 10 (calcularemos la suma de los primeros 10 números naturales)
     
     // Inicializamos los registros
     mov x1, #0              // x1 acumulará la suma, comenzamos en 0
