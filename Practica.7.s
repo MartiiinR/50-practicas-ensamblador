@@ -15,7 +15,7 @@ buffer: .space 20                         // Buffer para almacenar el resultado 
 
 _start:
     // Definimos el valor de N para calcular su factorial
-    mov x0, #5              // N = 5 (por ejemplo, queremos calcular 5!)
+    mov x0, #6              // N = 5 (por ejemplo, queremos calcular 5!)
     
     // Inicializamos los registros
     mov x1, x0              // Guardamos el valor original de N en x1 para su uso posterior
