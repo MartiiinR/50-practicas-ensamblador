@@ -4,11 +4,10 @@
 // Asciinema: 
 
 section .data
-original_str: .asciz "Hola, mundo!"      // Cadena original
+original_str: .asciz "Hola, profesor!"      // Cadena original
 msg_result: .asciz "Cadena invertida: %s\n"
 
     .section .text
-    .global _start
 
 _start:
     // Cargar la dirección de la cadena en x0
