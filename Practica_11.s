@@ -5,7 +5,7 @@
 
 .section .data
 cadena: .asciz "reconocer"              // La cadena a verificar
-resultado_palindromo: .asciz "Es un palíndromo\n"
+resultado_palindromo: .asciz "La palabra es un palíndromo\n"
 resultado_no_palindromo: .asciz "No es un palíndromo\n"
 
 .section .text
