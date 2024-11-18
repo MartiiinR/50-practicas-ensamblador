@@ -13,7 +13,7 @@ msg_not_prime: .asciz "El número %d no es primo.\n"
 
 _start:
     // Definimos el número que queremos verificar
-    mov x0, #29             // Número a verificar (ejemplo: 29)
+    mov x0, #31             // Número a verificar (ejemplo: 29)
     mov x1, x0              // Guardamos el número original en x1 para imprimirlo después
 
     // Casos especiales para los números 0, 1 y 2
