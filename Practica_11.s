@@ -3,56 +3,80 @@
 // Descripción: Verificar si una cadena de texto es un palindromo
 // Asciinema: 
 
-.section .data
-cadena: .asciz "reconocer"              // La cadena a verificar
-resultado_palindromo: .asciz "La palabra es un palíndromo\n"
-resultado_no_palindromo: .asciz "No es un palíndromo\n"
+.data
+msg_prompt: .asciz "Ingresa una cadena: "       // Mensaje para solicitar la cadena
+msg_result_palindrome: .asciz "Es un palíndromo\n" // Mensaje si la cadena es palíndromo
+msg_result_not_palindrome: .asciz "No es un palíndromo\n" // Mensaje si la cadena no es palíndromo
+fmt_str: .asciz "%s"                            // Formato para leer cadenas
 
-.section .text
-.global _start
+    .text
+    .global main
 
-_start:
-    // Cargar la dirección de la cadena en x0
-    ldr x0, =cadena
-    
-    // Inicializar punteros para inicio y fin de la cadena
-    mov x1, x0                 // x1 apunta al inicio
-    mov x2, x0                 // x2 también apunta al inicio, lo moveremos al final
+main:
+    // Guardar el puntero de marco y el enlace de retorno
+    stp x29, x30, [sp, -32]!    // Reservar espacio en la pila
+    mov x29, sp                 // Establecer el puntero de marco
+    sub sp, sp, #256            // Reservar espacio para la cadena en la pila
 
-buscar_fin:
-    ldrb w3, [x2], #1          // Leer un byte y avanzar
-    cmp w3, #0                 // Verificar si es el final de la cadena
-    b.ne buscar_fin            // Si no es el final, seguir avanzando
-    sub x2, x2, #2             // Retroceder para apuntar al último carácter válido
+    // Solicitar la cadena
+    ldr x0, =msg_prompt          // Cargar el mensaje para la cadena
+    bl printf                    // Imprimir el mensaje
+    ldr x0, =fmt_str             // Cargar el formato para leer una cadena
+    mov x1, sp                   // Dirección donde se guardará la cadena en la pila
+    bl scanf                     // Leer la cadena desde el usuario
 
-comparar:
-    ldrb w4, [x1], #1          // Leer carácter desde el inicio
-    ldrb w5, [x2], #-1         // Leer carácter desde el final
-    cmp w4, w5                 // Comparar caracteres
-    b.ne no_palindromo         // Si no son iguales, no es un palíndromo
-    cmp x1, x2                 // Verificar si los punteros se cruzaron o tocaron
-    b.lt comparar              // Si no se cruzaron, continuar comparando
+    // Cargar la cadena desde la pila
+    mov x0, sp                   // Dirección de la cadena en x0
+    bl is_palindrome             // Llamar a la función para verificar si es palíndromo
 
-    // Si llega aquí, es un palíndromo
-    ldr x0, =resultado_palindromo
-    bl imprimir
-    b fin_programa
+    // Comprobar el resultado
+    cmp w0, #1                   // Comparar el resultado con 1 (palíndromo)
+    beq print_palindrome         // Si es igual, ir a print_palindrome
 
-no_palindromo:
-    // Si llega aquí, no es un palíndromo
-    ldr x0, =resultado_no_palindromo
-    bl imprimir
+print_not_palindrome:
+    ldr x0, =msg_result_not_palindrome  // Cargar el mensaje "No es un palíndromo"
+    bl printf                           // Imprimir el mensaje
+    b end                               // Ir al final del programa
 
-fin_programa:
-    mov x8, #93                // syscall: exit
-    mov x0, #0                 // Estado de salida 0
-    svc #0                     // Llamada al sistema
+print_palindrome:
+    ldr x0, =msg_result_palindrome       // Cargar el mensaje "Es un palíndromo"
+    bl printf                            // Imprimir el mensaje
 
-imprimir:
-    // Imprimir una cadena usando write (syscall número 64 en ARM64)
-    mov x1, x0                 // x1 = dirección de la cadena
-    mov x2, #20                // Tamaño máximo a imprimir
-    mov x8, #64                // syscall: write
-    mov x0, #1                 // 1 = salida estándar (stdout)
-    svc #0                     // Llamada al sistema
+end:
+    // Restaurar el puntero de pila y regresar
+    add sp, sp, #256             // Restaurar el puntero de pila
+    ldp x29, x30, [sp], 32       // Restaurar el puntero de marco y el enlace de retorno
+    ret                          // Regresar del programa
+
+// Función para verificar si una cadena es palíndromo
+// Entrada: x0 - dirección de la cadena
+// Salida: w0 - 1 si es palíndromo, 0 si no lo es
+is_palindrome:
+    // Guardar punteros
+    mov x1, x0                   // Guardar el inicio de la cadena en x1
+    mov x2, x0                   // Guardar el final de la cadena en x2
+
+find_end:
+    ldrb w3, [x2], #1            // Leer el siguiente carácter de la cadena
+    cmp w3, #0                   // Comparar con el final de la cadena (NULL)
+    bne find_end                 // Continuar hasta encontrar el NULL
+    sub x2, x2, #2               // Retroceder un carácter
+
+check_palindrome:
+    cmp x1, x2                   // Comparar los punteros (inicio >= final)
+    bge palindrome               // Si se cruzan, es un palíndromo
+
+    ldrb w3, [x1], #1            // Leer el carácter de inicio
+    ldrb w4, [x2], #-1           // Leer el carácter de final
+    cmp w3, w4                   // Comparar los caracteres
+    bne not_palindrome           // Si no coinciden, no es un palíndromo
+
+    b check_palindrome           // Continuar con el siguiente par
+
+palindrome:
+    mov w0, #1                   // Retornar 1 (es palíndromo)
+    ret
+
+not_palindrome:
+    mov w0, #0                   // Retornar 0 (no es palíndromo)
     ret
