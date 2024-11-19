@@ -4,7 +4,7 @@
 // Asciinema: 
 
 .data
-ascii_char: .asciz "5"           // Carácter ASCII a convertir
+ascii_char: .asciz "9"           // Carácter ASCII a convertir
 msg_input:  .asciz "Carácter ASCII ingresado: %c\n"
 msg_result: .asciz "Valor numérico: %d\n"
 
