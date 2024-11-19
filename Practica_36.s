@@ -3,57 +3,126 @@
 // Descripción: Encuentra el segundo elemento mas grande en un arreglo de enteros.
 // Asciinema: 
 
-.global _start          // Punto de entrada para el sistema operativo
+.data
+    msg_size: .asciz "Ingrese el tamaño del arreglo (mínimo 2): "
+    msg_element: .asciz "Ingrese el elemento %d: "
+    msg_result: .asciz "El segundo elemento más grande es: %ld\n"
+    msg_error: .asciz "Error: El arreglo debe tener al menos 2 elementos.\n"
+    formato_in: .asciz "%ld"
+    formato_out: .asciz "%ld "
+    newline: .asciz "\n"
 
-_start:
-    // Inicialización del arreglo y número de elementos (solo para este ejemplo)
-    ldr x0, =arreglo    // Dirección base del arreglo en x0
-    mov x1, #5          // Número de elementos en el arreglo (ejemplo: 5)
+.text
+.global main
+.align 2
 
-    // Verificación de la cantidad de elementos
-    cmp x1, #2          // Comprobamos si hay al menos 2 elementos
-    blt end_program     // Si hay menos de 2 elementos, terminamos (no se puede encontrar el segundo más grande)
+main:
+    stp x29, x30, [sp, -16]!
+    mov x29, sp
 
-    // Inicializar los valores más grande y segundo más grande
-    ldr w2, [x0]        // x2 tendrá el elemento más grande (inicialmente arreglo[0])
-    mov x3, #0x80000000 // Inicializamos x3 (segundo más grande) con un valor muy bajo
+    // Pedir el tamaño del arreglo
+    adrp x0, msg_size
+    add x0, x0, :lo12:msg_size
+    bl printf
 
-    // Comenzamos desde el segundo elemento
-    mov x4, #1          // Índice de inicio en el bucle
+    // Leer el tamaño
+    sub sp, sp, #16
+    mov x2, sp
+    adrp x0, formato_in
+    add x0, x0, :lo12:formato_in
+    mov x1, x2
+    bl scanf
 
-find_second_largest:
-    cmp x4, x1          // Comparamos el índice actual con el número de elementos
-    bge end_result      // Si el índice alcanza el tamaño del arreglo, terminamos el bucle
+    // Guardar el tamaño en x19
+    ldr x19, [sp]
+    add sp, sp, #16
 
-    ldr w5, [x0, x4, LSL #2] // Cargamos arreglo[x4] en w5
+    // Verificar que el tamaño sea al menos 2
+    cmp x19, #2
+    b.lt error_size
 
-    // Comprobamos si el elemento actual es mayor que el mayor encontrado hasta ahora
-    cmp x5, x2
-    bge update_largest  // Si arreglo[x4] > mayor, actualizamos ambos valores
+    // Reservar espacio para el arreglo en el stack
+    sub sp, sp, x19, lsl #3  // Multiplicar x19 por 8 (tamaño de cada elemento)
+    mov x20, sp  // Guardar la dirección base del arreglo en x20
 
-    // Si el elemento actual no es el mayor, comprobamos si es el segundo más grande
-    cmp x5, x3
-    ble next_element    // Si arreglo[x4] <= segundo mayor, seguimos al siguiente elemento
-    mov x3, x5          // Si arreglo[x4] > segundo mayor, actualizamos el segundo mayor
+    // Leer los elementos del arreglo
+    mov x21, #0  // Índice del elemento actual
+leer_elementos:
+    cmp x21, x19
+    b.ge fin_lectura
 
-next_element:
-    add x4, x4, #1      // Avanzamos al siguiente elemento
-    b find_second_largest // Repetimos el bucle
+    // Imprimir mensaje para ingresar elemento
+    adrp x0, msg_element
+    add x0, x0, :lo12:msg_element
+    add x1, x21, #1  // Número de elemento (índice + 1)
+    bl printf
 
-update_largest:
-    mov x3, x2          // El mayor actual pasa a ser el segundo mayor
-    mov x2, x5          // Actualizamos el mayor con arreglo[x4]
-    b next_element      // Avanzamos al siguiente elemento
+    // Leer elemento
+    add x2, x20, x21, lsl #3  // Calcular dirección del elemento actual
+    adrp x0, formato_in
+    add x0, x0, :lo12:formato_in
+    mov x1, x2
+    bl scanf
 
-end_result:
-    // El segundo mayor valor ahora está en x3
+    add x21, x21, #1
+    b leer_elementos
 
-end_program:
-    mov x2, x3          // Copiamos el segundo mayor a x2 para el resultado final
-    mov w8, #93         // Código de salida del sistema para "exit" en Linux
-    svc #0              // Llamada al sistema para finalizar el programa
+fin_lectura:
+    // Encontrar el segundo elemento más grande
+    ldr x22, [x20]  // Inicializar el más grande con el primer elemento
+    ldr x23, [x20, #8]  // Inicializar el segundo más grande con el segundo elemento
 
-// Datos del arreglo (ejemplo)
-.section .data
-arreglo:
-    .word 3, 8, 5, 2, 7   // Ejemplo de arreglo con 5 elementos
+    // Asegurar que x22 >= x23
+    cmp x22, x23
+    b.ge continuar_busqueda
+    mov x24, x22
+    mov x22, x23
+    mov x23, x24
+
+continuar_busqueda:
+    mov x21, #2  // Comenzar desde el tercer elemento
+buscar_segundo:
+    cmp x21, x19
+    b.ge fin_busqueda
+
+    ldr x24, [x20, x21, lsl #3]  // Cargar elemento actual
+
+    // Comparar con el más grande
+    cmp x24, x22
+    b.le comparar_segundo
+    mov x23, x22  // El más grande actual pasa a ser el segundo más grande
+    mov x22, x24  // Actualizar el más grande
+    b siguiente_elemento
+
+comparar_segundo:
+    cmp x24, x23
+    b.le siguiente_elemento
+    mov x23, x24  // Actualizar el segundo más grande
+
+siguiente_elemento:
+    add x21, x21, #1
+    b buscar_segundo
+
+fin_busqueda:
+    // Imprimir el resultado
+    adrp x0, msg_result
+    add x0, x0, :lo12:msg_result
+    mov x1, x23
+    bl printf
+
+    // Liberar espacio del arreglo
+    add sp, sp, x19, lsl #3
+
+    b exit_program
+
+error_size:
+    // Imprimir mensaje de error
+    adrp x0, msg_error
+    add x0, x0, :lo12:msg_error
+    bl printf
+
+exit_program:
+    // Salir del programa
+    mov x0, #0
+    ldp x29, x30, [sp], #16
+    ret
