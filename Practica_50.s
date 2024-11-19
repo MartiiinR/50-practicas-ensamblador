@@ -5,7 +5,7 @@
 
 .data
     filename: .asciz "mensaje.txt"
-    message: .asciz "Hola, este es un mensaje escrito desde ensamblador ARM64!\n"
+    message: .asciz "Hola profesor Rene, como esta el dia de hoy?\n"
     error_create: .asciz "Error al crear el archivo.\n"
     error_write: .asciz "Error al escribir en el archivo.\n"
     success: .asciz "Mensaje escrito exitosamente en el archivo.\n"
