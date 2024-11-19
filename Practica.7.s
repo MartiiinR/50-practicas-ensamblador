@@ -3,79 +3,52 @@
 // Descripción: Calculo del factorial de un numero.
 // Asciinema: 
 
-  .section .data
-result_msg: .asciz "El factorial es: "    // Mensaje fijo para el resultado
-newline: .asciz "\n"                      // Salto de línea
+   .data
+msg_prompt_n: .asciz "Ingresa un número para calcular su factorial: " // Mensaje para solicitar N
+msg_result: .asciz "El factorial de %d es: %d\n" // Mensaje para imprimir el resultado
+fmt_int: .asciz "%d" // Formato para leer enteros
 
-    .section .bss
-buffer: .space 20                         // Buffer para almacenar el resultado como texto
+    .text
+    .global main
 
-    .section .text
-    .global _start
+main:
+    // Guardar el puntero de marco y el enlace de retorno
+    stp x29, x30, [sp, -16]! // Reservar espacio en la pila
+    mov x29, sp // Establecer el puntero de marco
+    sub sp, sp, #16 // Reservar espacio para N y el resultado en la pila
 
-_start:
-    // Definimos el valor de N para calcular su factorial
-    mov x0, #6              // N = 5 (por ejemplo, queremos calcular 5!)
-    
-    // Inicializamos los registros
-    mov x1, x0              // Guardamos el valor original de N en x1 para su uso posterior
-    mov x2, #1              // x2 será el acumulador para el factorial, inicializado en 1
-    mov x3, #1              // x3 será el contador para el bucle, iniciando en 1
+    // Solicitar el valor de N
+    ldr x0, =msg_prompt_n // Cargar el mensaje para solicitar N
+    bl printf // Imprimir el mensaje
+    ldr x0, =fmt_int // Cargar el formato para leer un entero
+    mov x1, sp // Dirección donde se guardará N en la pila
+    bl scanf // Leer el valor de N desde el usuario
+
+    // Cargar N desde la pila
+    ldr w1, [sp] // Cargar N en w1
+
+    // Inicializar variables para el cálculo del factorial
+    mov w2, #1 // Inicializar el factorial en 1 (w2 almacena el resultado)
+    mov w3, #1 // Inicializar el contador en 1
 
 factorial_loop:
-    cmp x3, x0              // Comparar contador con N
-    bgt end_factorial       // Si x3 > N, terminamos el bucle
+    cmp w3, w1 // Comparar el contador con N
+    bgt factorial_end // Si el contador es mayor que N, salir del bucle
+    mul w2, w2, w3 // Multiplicar el factorial acumulado por el contador
+    add w3, w3, #1 // Incrementar el contador
+    b factorial_loop // Volver al inicio del bucle
 
-    mul x2, x2, x3          // Acumulador = acumulador * contador (x2 = x2 * x3)
-    add x3, x3, #1          // Incrementamos el contador en 1 (x3 = x3 + 1)
-    b factorial_loop        // Repetimos el bucle
+factorial_end:
+    // Guardar el resultado en la pila
+    str w2, [sp, #4] // Guardar el factorial en la posición de pila reservada
 
-end_factorial:
-    // Mostrar el mensaje fijo "El factorial es: "
-    adr x0, result_msg      // Cargar la dirección del mensaje en x0
-    mov x1, #1              // Descriptor de archivo 1 (stdout)
-    mov x2, #17             // Longitud del mensaje
-    mov x8, #64             // syscall write
-    svc #0                  // Llamada al sistema para mostrar el mensaje
+    // Imprimir el resultado
+    ldr x0, =msg_result // Cargar el mensaje de resultado
+    ldr w1, [sp] // Cargar N en w1 para mostrarlo en el mensaje
+    ldr w2, [sp, #4] // Cargar el factorial en w2 para printf
+    bl printf // Imprimir el resultado
 
-    // Convertir el resultado en x2 a una cadena en el buffer para mostrarlo
-    mov x0, x2              // Movemos el valor del factorial a x0 para la conversión
-    bl int_to_string        // Llamada a la subrutina para convertir el entero a cadena
-
-    // Mostrar el resultado convertido en cadena
-    mov x1, x0              // Puntero al inicio de la cadena en x1
-    mov x2, #20             // Longitud máxima del buffer
-    mov x8, #64             // syscall write
-    svc #0                  // Llamada al sistema para mostrar el factorial
-
-    // Salto de línea
-    adr x0, newline         // Cargar el salto de línea
-    mov x1, #1              // Descriptor de archivo 1 (stdout)
-    mov x2, #1              // Longitud del salto de línea
-    mov x8, #64             // syscall write
-    svc #0                  // Llamada al sistema para nueva línea
-
-    // Salir del programa
-    mov x8, #93             // Código de salida para syscall exit en ARM64
-    mov x0, #0              // Código de retorno 0
-    svc #0                  // Llamada al sistema para salir
-
-// Subrutina: int_to_string
-// Convierte el entero en x0 a una cadena en el buffer para su impresión
-int_to_string:
-    mov x1, #10             // Divisor para obtener dígitos en base 10
-    ldr x2, =buffer + 19    // Apunta al final del buffer para llenar la cadena de atrás hacia adelante
-    mov x3, #0x30           // Offset para convertir número a ASCII
-
-convert_loop:
-    udiv x4, x0, x1         // Divide x0 entre 10 y coloca el cociente en x4
-    msub x5, x4, x1, x0     // Calcula el residuo (x0 % 10) y lo guarda en x5
-    add x5, x5, x3          // Convierte el residuo a su valor ASCII
-    strb w5, [x2, #-1]!     // Almacena el carácter en el buffer, avanzando hacia atrás
-    mov x0, x4              // Actualiza x0 con el cociente
-    cbz x0, end_convert     // Si x0 es 0, terminamos
-    b convert_loop          // Repetimos el bucle hasta que x0 sea 0
-
-end_convert:
-    mov x0, x2              // Devuelve el puntero al inicio de la cadena
-    ret                     // Regresa a la función principal
+    // Restaurar el puntero de pila y regresar
+    add sp, sp, #16 // Restaurar el puntero de pila
+    ldp x29, x30, [sp], 16 // Restaurar el puntero de marco y el enlace de retorno
+    ret // Regresar del programa 
