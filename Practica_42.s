@@ -4,7 +4,7 @@
 // Asciinema: 
 
 .data
-    msg_input: .asciz "Ingrese un número hexadecimal (máximo 16 dígitos, sin '0x'): "
+    msg_input: .asciz "Ingrese un número hexadecimal: "
     msg_output: .asciz "El número en decimal es: %ld\n"
     msg_error: .asciz "Error: Entrada inválida. Ingrese solo dígitos hexadecimales (0-9, A-F).\n"
     formato_in: .asciz "%s"
