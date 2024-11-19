@@ -3,26 +3,87 @@
 // Descripción: Calcular el Maximo Comun Divisor de dos numeros usando el algoritmo de Euclides
 // Asciinema: 
 
-.global _start      // Punto de entrada para el sistema operativo
+.data
+    msg_num1: .asciz "Ingrese el primer número: "
+    msg_num2: .asciz "Ingrese el segundo número: "
+    formato_in: .asciz "%ld"
+    msg_resultado: .asciz "El MCD de %ld y %ld es: %ld\n"
 
-_start:
-    // Cargamos los valores en los registros
-    mov x0, #56     // Primer número (por ejemplo, 56)
-    mov x1, #98     // Segundo número (por ejemplo, 98)
+.text
+.global main
+.align 2
 
-mcd_loop:
-    cmp x1, #0         // Comparamos x1 con 0
-    beq end_mcd        // Si x1 es 0, terminamos el bucle (MCD en x0)
-    
-    // Calculamos x0 = x0 % x1 usando una instrucción de división entera
-    udiv x2, x0, x1    // x2 = x0 / x1 (división entera)
-    msub x2, x2, x1, x0 // x2 = x0 - (x2 * x1), lo que da el resto
-    
-    mov x0, x1         // Intercambiamos x0 con x1
-    mov x1, x2         // y x1 con el resto (nuevo valor para la siguiente iteración)
-    b mcd_loop         // Repetimos el proceso
+main:
+    stp x29, x30, [sp, -16]!
+    mov x29, sp
+
+    // Pedir primer número al usuario
+    adrp x0, msg_num1
+    add x0, x0, :lo12:msg_num1
+    bl printf
+
+    // Leer primer número
+    sub sp, sp, #16
+    mov x2, sp
+    adrp x0, formato_in
+    add x0, x0, :lo12:formato_in
+    mov x1, x2
+    bl scanf
+
+    // Guardar primer número
+    ldr x19, [sp]
+    add sp, sp, #16
+
+    // Pedir segundo número al usuario
+    adrp x0, msg_num2
+    add x0, x0, :lo12:msg_num2
+    bl printf
+
+    // Leer segundo número
+    sub sp, sp, #16
+    mov x2, sp
+    adrp x0, formato_in
+    add x0, x0, :lo12:formato_in
+    mov x1, x2
+    bl scanf
+
+    // Guardar segundo número
+    ldr x20, [sp]
+    add sp, sp, #16
+
+    // Calcular MCD
+    mov x0, x19
+    mov x1, x20
+    bl mcd
+
+    // Guardar resultado
+    mov x21, x0
+
+    // Imprimir resultado
+    adrp x0, msg_resultado
+    add x0, x0, :lo12:msg_resultado
+    mov x1, x19
+    mov x2, x20
+    mov x3, x21
+    bl printf
+
+    // Salir del programa
+    mov x0, #0
+    ldp x29, x30, [sp], #16
+    ret
+
+// Función para calcular el MCD usando el algoritmo de Euclides
+mcd:
+    // x0: primer número (a)
+    // x1: segundo número (b)
+loop_mcd:
+    cbz x1, end_mcd   // Si b == 0, terminar
+    udiv x2, x0, x1   // x2 = a / b
+    msub x2, x2, x1, x0  // x2 = a - (a / b) * b (es decir, a % b)
+    mov x0, x1        // a = b
+    mov x1, x2        // b = a % b
+    b loop_mcd
 
 end_mcd:
-    // Resultado en x0 (el MCD de los dos números originales)
-    mov w8, #93        // Código de salida del sistema para "exit" en Linux
-    svc #0             // Llamada al sistema para finalizar el programa
+    // El MCD está en x0
+    ret
