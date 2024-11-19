@@ -3,40 +3,101 @@
 // Descripción: Contar los bits activados en un numero
 // Asciinema: 
 
- .section .data
-num: .word 0b10101100             // Número inicial en binario (172 en decimal)
-msg_resultado: .asciz "Bits activados: %d\n"
+.data
+    msg_num: .asciz "Ingrese un número: "
+    formato_in: .asciz "%ld"
+    msg_resultado: .asciz "Número de bits activados: %d\n"
+    msg_binario: .asciz "En binario: "
+    formato_bit: .asciz "%d"
+    newline: .asciz "\n"
 
-    .section .text
-    .global _start
+.text
+.global main
+.align 2
 
-_start:
-    // Cargar el número inicial en un registro
-    ldr x0, =num                  // Dirección del número
-    ldr w0, [x0]                  // Cargar el número en w0
+main:
+    stp x29, x30, [sp, -16]!
+    mov x29, sp
 
-    // Inicializar el contador de bits activados en 0
-    mov w1, #0                    // w1 será el contador de bits en 1
+    // Pedir número al usuario
+    adrp x0, msg_num
+    add x0, x0, :lo12:msg_num
+    bl printf
 
-count_bits:
-    // Verificar si el bit menos significativo está activado
-    and w2, w0, #1                // w2 = w0 & 1, obtiene el bit menos significativo
-    add w1, w1, w2                // Incrementar el contador si el bit es 1
+    // Leer número
+    sub sp, sp, #16
+    mov x2, sp
+    adrp x0, formato_in
+    add x0, x0, :lo12:formato_in
+    mov x1, x2
+    bl scanf
 
-    // Desplazar el número a la derecha en 1 posición
-    lsr w0, w0, #1                // w0 = w0 >> 1, para revisar el siguiente bit
+    // Cargar número ingresado
+    ldr x19, [sp]
+    add sp, sp, #16
 
-    // Verificar si quedan bits por procesar
-    cbnz w0, count_bits           // Si w0 no es cero, repetir el bucle
+    // Imprimir representación binaria
+    adrp x0, msg_binario
+    add x0, x0, :lo12:msg_binario
+    bl printf
 
-    // Preparación para imprimir el resultado
-    ldr x0, =msg_resultado        // Cargar el mensaje de resultado
-    mov x1, w1                    // Mover el contador de bits activados a x1
+    mov x0, x19
+    mov x1, #64
+    bl print_binary
 
-    // Llamada a printf para mostrar el número de bits activados
-    bl printf                     // Llamada a printf para mostrar el resultado
+    // Contar bits activados
+    mov x20, xzr  // Contador de bits
+    mov x21, #64  // Número de bits a revisar
+
+contar_bits:
+    cbz x21, fin_conteo
+    and x22, x19, #1
+    add x20, x20, x22
+    lsr x19, x19, #1
+    sub x21, x21, #1
+    b contar_bits
+
+fin_conteo:
+    // Imprimir resultado
+    adrp x0, msg_resultado
+    add x0, x0, :lo12:msg_resultado
+    mov x1, x20
+    bl printf
 
     // Salir del programa
-    mov x8, #93                   // Código de salida para syscall exit en ARM64
-    mov x0, #0                    // Código de retorno 0
-    svc #0                        // Llamada al sistema
+    mov x0, #0
+    ldp x29, x30, [sp], #16
+    ret
+
+// Función para imprimir número en binario
+print_binary:
+    stp x29, x30, [sp, -48]!
+    mov x29, sp
+    str x0, [sp, 16]                  // Guardar número
+    str x1, [sp, 24]                  // Guardar cantidad de bits
+    mov x19, x1                       // Contador de bits
+    
+print_bit_loop:
+    cmp x19, #0
+    b.le print_binary_end
+    
+    sub x19, x19, #1
+    ldr x0, [sp, 16]
+    mov x1, x19
+    lsr x2, x0, x1
+    and x2, x2, #1
+    
+    adrp x0, formato_bit
+    add x0, x0, :lo12:formato_bit
+    mov x1, x2
+    bl printf
+    
+    b print_bit_loop
+    
+print_binary_end:
+    adrp x0, newline
+    add x0, x0, :lo12:newline
+    bl printf
+    
+    ldp x29, x30, [sp], #48
+    ret
