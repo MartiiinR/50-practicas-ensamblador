@@ -3,73 +3,219 @@
 // Descripción: Transposicion de una matriz 3x3
 // Asciinema: 
 
-section .data
-matrizA: .word 1, 2, 3, 4, 5, 6, 7, 8, 9   // Matriz original de 3x3
-transpuesta: .space 36                     // Espacio para la matriz transpuesta (3x3)
+.data
+// Dimensiones de la matriz (3x3)
+N: .word 3          // Filas
+M: .word 3          // Columnas
 
-msg_resultado: .asciz "Matriz transpuesta:\n%d %d %d\n%d %d %d\n%d %d %d\n"
+// Matrices
+matrix: .zero 36     // 3x3 matriz original (4 bytes por elemento)
+result: .zero 36     // Matriz transpuesta resultado
 
-    .section .text
-    .global _start
+// Mensajes y formatos
+msg_matrix: .asciz "\nIngrese los elementos de la matriz 3x3:\n"
+msg_element: .asciz "Ingrese elemento [%d][%d]: "
+msg_original: .asciz "\nMatriz original:\n"
+msg_result: .asciz "\nMatriz transpuesta:\n"
+fmt_input: .asciz "%d"
+fmt_output: .asciz "%4d "
+new_line: .asciz "\n"
 
-_start:
-    // Cargar las direcciones de las matrices
-    ldr x0, =matrizA           // x0 apunta al inicio de matrizA
-    ldr x1, =transpuesta       // x1 apunta al inicio de la matriz transpuesta
+.text
+.global main
 
-    // Definir el tamaño de la matriz (3x3)
-    mov w2, #3                 // Tamaño de la matriz (3)
+main:
+    // Prólogo
+    stp x29, x30, [sp, -16]!
+    mov x29, sp
 
-    // Bucle para recorrer filas de matrizA
-    mov w3, #0                 // Índice de fila de la matriz original
-fila_loop:
-    cmp w3, w2                 // Comparar con el tamaño de la matriz
-    bge print_resultado        // Si hemos procesado todas las filas, salimos
+    // Anunciar entrada de la matriz
+    adrp x0, msg_matrix
+    add x0, x0, :lo12:msg_matrix
+    bl printf
 
-    // Bucle para recorrer columnas de matrizA
-    mov w4, #0                 // Índice de columna de la matriz original
-columna_loop:
-    cmp w4, w2                 // Comparar con el tamaño de la matriz
-    bge next_fila              // Si hemos procesado todas las columnas, pasar a la siguiente fila
+    // Leer matriz
+    adrp x20, matrix
+    add x20, x20, :lo12:matrix
+    mov x19, #0          // i = 0
 
-    // Calcular el índice de matrizA en la posición (fila, columna)
-    mul x5, x3, x2             // x5 = fila * tamaño (desplazamiento de la fila)
-    add x5, x5, x4             // x5 = fila * tamaño + columna (índice de matrizA)
+loop_i:
+    cmp x19, #3
+    beq end_loop_i
+    mov x21, #0          // j = 0
 
-    // Calcular el índice de la posición transpuesta (columna, fila)
-    mul x6, x4, x2             // x6 = columna * tamaño (desplazamiento de la columna en transpuesta)
-    add x6, x6, x3             // x6 = columna * tamaño + fila (índice de transpuesta)
+loop_j:
+    cmp x21, #3
+    beq end_loop_j
 
-    // Cargar el valor de matrizA y almacenar en la posición transpuesta
-    ldr w7, [x0, x5, LSL #2]   // Cargar matrizA[fila][columna] en w7
-    str w7, [x1, x6, LSL #2]   // Guardar en transpuesta[columna][fila]
+    // Mostrar prompt
+    adrp x0, msg_element
+    add x0, x0, :lo12:msg_element
+    mov x1, x19
+    mov x2, x21
+    bl printf
 
-    // Incrementar columna
-    add w4, w4, #1
-    b columna_loop             // Repetir el bucle para la siguiente columna
+    // Leer elemento
+    sub sp, sp, #16
+    mov x1, sp
+    adrp x0, fmt_input
+    add x0, x0, :lo12:fmt_input
+    bl scanf
 
-next_fila:
-    // Incrementar fila
-    add w3, w3, #1
-    b fila_loop                // Repetir el bucle para la siguiente fila
+    // Calcular posición y guardar
+    mov x22, #12         // 3 * 4
+    mul x23, x19, x22    // i * (3 * 4)
+    mov x24, #4
+    mul x25, x21, x24    // j * 4
+    add x23, x23, x25    // offset total
+    ldr w24, [sp]
+    str w24, [x20, x23]  // guardar en matrix[i][j]
+    add sp, sp, #16
 
-print_resultado:
-    // Preparación para imprimir la matriz transpuesta
-    ldr x0, =msg_resultado     // Cargar el mensaje de la matriz transpuesta
-    ldr w1, [x1]               // Cargar transpuesta[0][0] en w1
-    ldr w2, [x1, #4]           // Cargar transpuesta[0][1] en w2
-    ldr w3, [x1, #8]           // Cargar transpuesta[0][2] en w3
-    ldr w4, [x1, #12]          // Cargar transpuesta[1][0] en w4
-    ldr w5, [x1, #16]          // Cargar transpuesta[1][1] en w5
-    ldr w6, [x1, #20]          // Cargar transpuesta[1][2] en w6
-    ldr w7, [x1, #24]          // Cargar transpuesta[2][0] en w7
-    ldr w8, [x1, #28]          // Cargar transpuesta[2][1] en w8
-    ldr w9, [x1, #32]          // Cargar transpuesta[2][2] en w9
+    add x21, x21, #1     // j++
+    b loop_j
 
-    // Llamada a printf para mostrar la matriz transpuesta
-    bl printf                  // Llamada a printf para mostrar la matriz
+end_loop_j:
+    add x19, x19, #1     // i++
+    b loop_i
 
-    // Salir del programa
-    mov x8, #93                // Código de salida para syscall exit en ARM64
-    mov x0, #0                 // Código de retorno 0
-    svc #0                     // Llamada al sistema
+end_loop_i:
+    // Mostrar matriz original
+    adrp x0, msg_original
+    add x0, x0, :lo12:msg_original
+    bl printf
+
+    // Imprimir matriz original
+    mov x19, #0          // i = 0
+
+print_orig_i:
+    cmp x19, #3
+    beq end_print_orig_i
+    mov x21, #0          // j = 0
+
+print_orig_j:
+    cmp x21, #3
+    beq end_print_orig_j
+
+    // Calcular offset y cargar elemento
+    mov x22, #12         // 3 * 4
+    mul x23, x19, x22    // i * (3 * 4)
+    mov x24, #4
+    mul x25, x21, x24    // j * 4
+    add x23, x23, x25    // offset total
+    
+    adrp x20, matrix
+    add x20, x20, :lo12:matrix
+    ldr w1, [x20, x23]   // cargar matrix[i][j]
+
+    // Imprimir elemento
+    adrp x0, fmt_output
+    add x0, x0, :lo12:fmt_output
+    bl printf
+
+    add x21, x21, #1     // j++
+    b print_orig_j
+
+end_print_orig_j:
+    // Nueva línea al final de cada fila
+    adrp x0, new_line
+    add x0, x0, :lo12:new_line
+    bl printf
+
+    add x19, x19, #1     // i++
+    b print_orig_i
+
+end_print_orig_i:
+    // Realizar la transposición
+    mov x19, #0          // i = 0
+
+trans_loop_i:
+    cmp x19, #3
+    beq end_trans_loop_i
+    mov x21, #0          // j = 0
+
+trans_loop_j:
+    cmp x21, #3
+    beq end_trans_loop_j
+
+    // Calcular offset para matriz original [i][j]
+    mov x22, #12         // 3 * 4
+    mul x23, x19, x22    // i * (3 * 4)
+    mov x24, #4
+    mul x25, x21, x24    // j * 4
+    add x23, x23, x25    // offset total
+    
+    // Cargar elemento de la matriz original
+    adrp x20, matrix
+    add x20, x20, :lo12:matrix
+    ldr w24, [x20, x23]
+
+    // Calcular offset para matriz transpuesta [j][i]
+    mov x22, #12         // 3 * 4
+    mul x23, x21, x22    // j * (3 * 4)
+    mov x24, #4
+    mul x25, x19, x24    // i * 4
+    add x23, x23, x25    // offset total
+
+    // Guardar en matriz resultado (transpuesta)
+    adrp x20, result
+    add x20, x20, :lo12:result
+    str w24, [x20, x23]
+
+    add x21, x21, #1     // j++
+    b trans_loop_j
+
+end_trans_loop_j:
+    add x19, x19, #1     // i++
+    b trans_loop_i
+
+end_trans_loop_i:
+    // Mostrar resultado
+    adrp x0, msg_result
+    add x0, x0, :lo12:msg_result
+    bl printf
+
+    // Imprimir matriz transpuesta
+    mov x19, #0          // i = 0
+
+print_loop_i:
+    cmp x19, #3
+    beq end_print_loop_i
+    mov x21, #0          // j = 0
+
+print_loop_j:
+    cmp x21, #3
+    beq end_print_loop_j
+
+    // Calcular offset y cargar elemento
+    mov x22, #12         // 3 * 4
+    mul x23, x19, x22    // i * (3 * 4)
+    mov x24, #4
+    mul x25, x21, x24    // j * 4
+    add x23, x23, x25    // offset total
+    
+    adrp x20, result
+    add x20, x20, :lo12:result
+    ldr w1, [x20, x23]   // cargar result[i][j]
+
+    // Imprimir elemento
+    adrp x0, fmt_output
+    add x0, x0, :lo12:fmt_output
+    bl printf
+
+    add x21, x21, #1     // j++
+    b print_loop_j
+
+end_print_loop_j:
+    // Nueva línea al final de cada fila
+    adrp x0, new_line
+    add x0, x0, :lo12:new_line
+    bl printf
+
+    add x19, x19, #1     // i++
+    b print_loop_i
+
+end_print_loop_i:
+    // Epílogo
+    ldp x29, x30, [sp], 16
+    ret
