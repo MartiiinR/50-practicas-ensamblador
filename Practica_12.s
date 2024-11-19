@@ -1,47 +1,49 @@
 // Autor: Ruiz Barcenas Martin Adolfo
 // Fecha: 09-11-2024
-// Descripción: Contar los bits activos en un numero
+// Descripción: Encontrar el valor maximo en un arreglo
 // Asciinema: 
 
-.section .data
-num: .word 0b10101100             // Número inicial en binario (172 en decimal)
-msg_resultado: .asciz "Bits activados: %d\n"
+ .data
+array:      .word 12, 45, 7, 23, 67, 89, 34, 56, 90, 14 // Arreglo de ejemplol
+arr_len:    .word 10                                    // Longitud del arreglo
+msg_result: .asciz "El valor máximo en el arreglo es: %d\n" // Mensaje para imprimir el resultado
 
-    .section .text
-    .global _start
+    .text
+    .global main
 
-_start:
-    // Cargar el número inicial en un registro
-    ldr x0, =num                  // Dirección del número
-    ldr w0, [x0]                  // Cargar el número en w0
+main:
+    // Guardar el puntero de marco y el enlace de retorno
+    stp x29, x30, [sp, -16]!     // Reservar espacio en la pila
+    mov x29, sp                  // Establecer el puntero de marco
+    
+    // Cargar la dirección y longitud del arreglo
+    adrp x0, arr_len             // Cargar la página base de arr_len en x0
+    add x0, x0, :lo12:arr_len    // Cargar el desplazamiento bajo de arr_len
+    ldr w1, [x0]                 // Obtener la longitud del arreglo en w1
+    adrp x2, array               // Cargar la página base de array en x2
+    add x2, x2, :lo12:array      // Cargar el desplazamiento bajo de array
 
-    // Inicializar el contador de bits activados en 0
-    mov w1, #0                    // w1 será el contador de bits en 1
+    // Inicializar el valor máximo
+    ldr w3, [x2]                 // Cargar el primer elemento del arreglo en w3 como máximo inicial
+    add x2, x2, #4               // Avanzar a la siguiente posición en el arreglo
+    sub w1, w1, #1               // Decrementar el contador de elementos
 
-count_bits:
-    // Verificar si el bit menos significativo está activado
-    and w2, w0, #1                // w2 = w0 & 1, obtiene el bit menos significativo
-    add w1, w1, w2                // Incrementar el contador si el bit es 1
+loop:
+    cbz w1, end_loop             // Si el contador llega a cero, salir del bucle
+    ldr w4, [x2]                 // Cargar el siguiente elemento en w4
+    cmp w3, w4                   // Comparar w3 (máximo actual) con w4 (nuevo valor)
+    csel w3, w3, w4, gt          // Si w3 > w4, mantener w3; si no, actualizar w3 con w4
+    add x2, x2, #4               // Avanzar a la siguiente posición en el arreglo
+    sub w1, w1, #1               // Decrementar el contador de elementos
+    b loop                       // Repetir el bucle
 
-    // Desplazar el número a la derecha en 1 posición
-    lsr w0, w0, #1                // w0 = w0 >> 1, para revisar el siguiente bit
+end_loop:
+    // Imprimir el resultado
+    adrp x0, msg_result          // Cargar la página base de msg_result en x0
+    add x0, x0, :lo12:msg_result // Cargar el desplazamiento bajo de msg_result
+    mov w1, w3                   // Mover el valor máximo a w1 para printf
+    bl printf                    // Imprimir el valor máximo en el arreglo
 
-    // Verificar si quedan bits por procesar
-    cbnz w0, count_bits           // Si w0 no es cero, repetir el bucle
-
-    // Preparación para imprimir el resultado
-    ldr x0, =msg_resultado        // Cargar el mensaje de resultado
-    mov x1, w1                    // Mover el contador de bits activados a x1
-
-    // Llamada a printf para mostrar el número de bits activados
-    bl printf                     // Llamada a printf para mostrar el resultado
-
-    // Salir del programa
-    mov x8, #93                   // Código de salida para syscall exit en ARM64
-    mov x0, #0                    // Código de retorno 0
-    svc #0                        // Llamada al sistema
-
-    cbnz x0, convert_loop      // Si el cociente no es cero, continuar
-
-    // Ajustar x1 para que apunte al inicio del número en el buffer
-    ret
+    // Restaurar el puntero de pila y regresar
+    ldp x29, x30, [sp], 16       // Restaurar el puntero de marco y el enlace de retorno
+    ret                          // Regresar del programa
