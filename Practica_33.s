@@ -3,33 +3,88 @@
 // Descripción: Suma de todos los elementos de un arreglo
 // Asciinema: 
 
-.global _start       // Punto de entrada para el sistema operativo
+.data
+    msg_size: .asciz "Ingrese el tamaño del arreglo: "
+    msg_element: .asciz "Ingrese el elemento %d: "
+    msg_suma: .asciz "La suma de los elementos es: %ld\n"
+    formato_in: .asciz "%ld"
 
-_start:
-    // Inicializamos el arreglo y el tamaño (solo para este ejemplo)
-    ldr x0, =arreglo // Dirección base del arreglo en x0
-    mov x1, #5       // Número de elementos en el arreglo (ejemplo: 5)
+.text
+.global main
+.align 2
 
-    // Inicializamos la suma a 0
-    mov x2, #0       // x2 almacenará el resultado de la suma
+main:
+    stp x29, x30, [sp, -16]!
+    mov x29, sp
 
-sum_loop:
-    cbz x1, end_sum  // Si el número de elementos es 0, terminamos el bucle
+    // Pedir el tamaño del arreglo
+    adrp x0, msg_size
+    add x0, x0, :lo12:msg_size
+    bl printf
 
-    // Cargamos el elemento actual y lo sumamos a x2
-    ldr w3, [x0], #4 // Carga el elemento de 4 bytes (32 bits) y avanza el puntero
-    add x2, x2, x3   // Suma el valor en x3 al acumulador en x2
+    // Leer el tamaño
+    sub sp, sp, #16
+    mov x2, sp
+    adrp x0, formato_in
+    add x0, x0, :lo12:formato_in
+    mov x1, x2
+    bl scanf
 
-    // Decrementamos el contador de elementos
-    sub x1, x1, #1   // Reducimos el número de elementos en 1
-    b sum_loop       // Repetimos el bucle
+    // Guardar el tamaño en x19
+    ldr x19, [sp]
+    add sp, sp, #16
 
-end_sum:
-    // El resultado final (suma de elementos) está en x2
-    mov w8, #93      // Código de salida del sistema para "exit" en Linux
-    svc #0           // Llamada al sistema para finalizar el programa
+    // Reservar espacio para el arreglo en el stack
+    sub sp, sp, x19, lsl #3  // Multiplicar x19 por 8 (tamaño de cada elemento)
+    mov x20, sp  // Guardar la dirección base del arreglo en x20
 
-// Datos del arreglo (ejemplo)
-.section .data
-arreglo:
-    .word 1, 2, 3, 4, 5 // Ejemplo de arreglo con 5 elementos
+    // Leer los elementos del arreglo
+    mov x21, #0  // Índice del elemento actual
+leer_elementos:
+    cmp x21, x19
+    b.ge fin_lectura
+
+    // Imprimir mensaje para ingresar elemento
+    adrp x0, msg_element
+    add x0, x0, :lo12:msg_element
+    add x1, x21, #1  // Número de elemento (índice + 1)
+    bl printf
+
+    // Leer elemento
+    add x2, x20, x21, lsl #3  // Calcular dirección del elemento actual
+    adrp x0, formato_in
+    add x0, x0, :lo12:formato_in
+    mov x1, x2
+    bl scanf
+
+    add x21, x21, #1
+    b leer_elementos
+
+fin_lectura:
+    // Sumar los elementos del arreglo
+    mov x21, #0  // Índice
+    mov x22, #0  // Suma
+
+sumar_elementos:
+    cmp x21, x19
+    b.ge fin_suma
+
+    ldr x23, [x20, x21, lsl #3]  // Cargar elemento actual
+    add x22, x22, x23  // Sumar al total
+    add x21, x21, #1
+    b sumar_elementos
+
+fin_suma:
+    // Imprimir resultado
+    adrp x0, msg_suma
+    add x0, x0, :lo12:msg_suma
+    mov x1, x22
+    bl printf
+
+    // Liberar espacio del arreglo
+    add sp, sp, x19, lsl #3
+
+    // Salir del programa
+    mov x0, #0
+    ldp x29, x30, [sp], #16
+    ret
