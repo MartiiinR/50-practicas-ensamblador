@@ -3,74 +3,114 @@
 // Descripción: Ordenamiento burbuja de un arreglo de numeros enteros
 // Asciinema: 
 
-  .section .data
-arreglo: .word 25, 10, 48, 3, 5, 30      // Arreglo desordenado de números enteros
-tamano: .word 6                          // Tamaño del arreglo
-msg_resultado: .asciz "Arreglo ordenado: %d %d %d %d %d %d\n"
+.data
+array:      .word 12, 45, 7, 23, 67, 89, 34, 56, 90, 14  // Arreglo a ordenar
+arr_len:    .word 10                                      // Longitud del arreglo
+msg_before: .asciz "Arreglo antes de ordenar:\n"
+msg_after:  .asciz "Arreglo después de ordenar:\n"
+msg_elem:   .asciz "%d "                                  // Para imprimir cada elemento
+msg_nl:     .asciz "\n"                                   // Nueva línea
 
-    .section .text
-    .global _start
+    .text
+    .global main
+main:
+    // Guardar el puntero de marco y el enlace de retorno
+    stp x29, x30, [sp, -16]!     // Reservar espacio en la pila
+    mov x29, sp                   // Establecer el puntero de marco
 
-_start:
-    // Cargar el tamaño del arreglo
-    ldr x1, =tamano            // Dirección del tamaño
-    ldr w1, [x1]               // Cargar el tamaño en w1 (número de elementos)
+    // Imprimir mensaje inicial
+    adrp x0, msg_before
+    add x0, x0, :lo12:msg_before
+    bl printf
 
-    // Cargar la dirección del arreglo
-    ldr x2, =arreglo           // x2 apunta al inicio del arreglo
+    // Imprimir arreglo original
+    bl print_array
 
-bubble_sort:
-    // Bucle externo: controla las pasadas
-    sub w3, w1, #1             // Número de pasadas (tamaño - 1)
-    mov w9, w3                 // Guardamos el valor original en w9 para reiniciar las pasadas
+    // Preparar para ordenamiento burbuja
+    adrp x0, arr_len
+    add x0, x0, :lo12:arr_len
+    ldr w0, [x0]                  // w0 = longitud del arreglo
+    mov w1, w0                    // w1 = contador externo
 
 outer_loop:
-    cbz w3, print_resultado    // Si w3 == 0, el arreglo está ordenado
-
-    // Bucle interno: compara e intercambia elementos
-    mov w4, #0                 // Índice del primer elemento en la pasada
+    cmp w1, #1                    // Comparar contador con 1
+    ble done_sort                 // Si <= 1, terminamos
+    
+    mov w2, #0                    // w2 = índice para bucle interno
+    sub w3, w1, #1               // w3 = límite del bucle interno
 
 inner_loop:
-    // Verificar si llegamos al final de esta pasada
-    cmp w4, w3
-    bge decrement_passes       // Si w4 >= w3, terminamos esta pasada
+    cmp w2, w3                    // Comparar índice con límite
+    bge end_inner                 // Si >= límite, terminar bucle interno
 
-    // Cargar los elementos actuales para comparar
-    ldr w5, [x2, w4, LSL #2]   // Cargar arreglo[w4] en w5
-    ldr w6, [x2, w4, LSL #2 + 4] // Cargar arreglo[w4 + 1] en w6
+    // Cargar elementos a comparar
+    adrp x4, array
+    add x4, x4, :lo12:array
+    lsl w5, w2, #2               // w5 = índice * 4
+    add x5, x4, w5, UXTW         // x5 = dirección del elemento actual
+    ldr w6, [x5]                 // w6 = elemento actual
+    ldr w7, [x5, #4]             // w7 = siguiente elemento
 
-    // Comparar e intercambiar si están en el orden incorrecto
-    cmp w5, w6                 // Comparar arreglo[w4] con arreglo[w4 + 1]
-    ble skip_swap              // Si arreglo[w4] <= arreglo[w4 + 1], saltar el intercambio
+    // Comparar y intercambiar si es necesario
+    cmp w6, w7                    // Comparar elementos
+    ble no_swap                   // Si están en orden, no intercambiar
+    
+    // Intercambiar elementos
+    str w7, [x5]                 // Guardar elemento menor primero
+    str w6, [x5, #4]             // Guardar elemento mayor después
 
-    // Intercambiar arreglo[w4] y arreglo[w4 + 1]
-    str w6, [x2, w4, LSL #2]   // Guardar arreglo[w4 + 1] en arreglo[w4]
-    str w5, [x2, w4, LSL #2 + 4] // Guardar arreglo[w4] en arreglo[w4 + 1]
+no_swap:
+    add w2, w2, #1               // Incrementar índice interno
+    b inner_loop                 // Continuar bucle interno
 
-skip_swap:
-    // Incrementar el índice para el siguiente par
-    add w4, w4, #1
-    b inner_loop               // Repetir el bucle interno
+end_inner:
+    sub w1, w1, #1               // Decrementar contador externo
+    b outer_loop                 // Continuar bucle externo
 
-decrement_passes:
-    // Decrementar el contador de pasadas y repetir el bucle externo
-    sub w3, w3, #1
-    b outer_loop               // Repetir el bucle externo
+done_sort:
+    // Imprimir mensaje final
+    adrp x0, msg_after
+    add x0, x0, :lo12:msg_after
+    bl printf
 
-print_resultado:
-    // Preparación para imprimir el arreglo ordenado
-    ldr x0, =msg_resultado     // Cargar el mensaje del arreglo ordenado
-    ldr w1, [x2]               // Cargar arreglo[0] en w1
-    ldr w2, [x2, #4]           // Cargar arreglo[1] en w2
-    ldr w3, [x2, #8]           // Cargar arreglo[2] en w3
-    ldr w4, [x2, #12]          // Cargar arreglo[3] en w4
-    ldr w5, [x2, #16]          // Cargar arreglo[4] en w5
-    ldr w6, [x2, #20]          // Cargar arreglo[5] en w6
+    // Imprimir arreglo ordenado
+    bl print_array
 
-    // Llamada a printf para mostrar el arreglo ordenado
-    bl printf                  // Llamada a printf para mostrar el arreglo
+    // Restaurar y retornar
+    ldp x29, x30, [sp], 16
+    ret
 
-    // Salir del programa
-    mov x8, #93                // Código de salida para syscall exit en ARM64
-    mov x0, #0                 // Código de retorno 0
-    svc #0                     // Llamada al sistema
+// Subrutina para imprimir el arreglo
+print_array:
+    stp x29, x30, [sp, -16]!     // Guardar registros
+    
+    adrp x19, array              // Cargar dirección del arreglo
+    add x19, x19, :lo12:array
+    
+    adrp x20, arr_len
+    add x20, x20, :lo12:arr_len
+    ldr w20, [x20]               // Cargar longitud
+    
+    mov w21, #0                  // Inicializar contador
+
+print_loop:
+    cmp w21, w20                 // Comparar contador con longitud
+    bge print_end                // Si terminamos, salir
+    
+    // Imprimir elemento actual
+    adrp x0, msg_elem
+    add x0, x0, :lo12:msg_elem
+    ldr w1, [x19, w21, UXTW #2]  // Cargar elemento actual
+    bl printf
+    
+    add w21, w21, #1             // Incrementar contador
+    b print_loop
+
+print_end:
+    // Imprimir nueva línea
+    adrp x0, msg_nl
+    add x0, x0, :lo12:msg_nl
+    bl printf
+    
+    ldp x29, x30, [sp], 16       // Restaurar registros
+    ret 
