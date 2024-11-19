@@ -4,7 +4,7 @@
 // Asciinema: 
 
 .data
-numero:     .word   43            // Número entero a convertir
+numero:     .word   12            // Número entero a convertir
 ascii_res:  .skip   2            // Espacio para el carácter ASCII (1 byte) + null terminator
 msg_input:  .asciz "Número entero ingresado: %d\n"
 msg_result: .asciz "Carácter ASCII resultante: %c\n"
