@@ -3,49 +3,83 @@
 // Descripción: Convertir un numero decimal a uno hexadecimal
 // Asciinema: 
 
- .section .data
-num: .word 305419896              // Número decimal a convertir (ejemplo: 305419896, que es 0x12345678 en hexadecimal)
-buffer: .space 9                  // Espacio para la cadena hexadecimal (8 dígitos + terminador nulo)
-msg_resultado: .asciz "Representación hexadecimal: %s\n"
+.data
+    msg_input: .asciz "Ingrese un número decimal positivo: "
+    msg_output: .asciz "El número en hexadecimal es: "
+    formato_in: .asciz "%ld"
+    formato_out: .asciz "%c"
+    newline: .asciz "\n"
+    hex_chars: .asciz "0123456789ABCDEF"
 
-    .section .text
-    .global _start
+.text
+.global main
+.align 2
 
-_start:
-    // Cargar el número en un registro
-    ldr x0, =num                  // Dirección del número
-    ldr w0, [x0]                  // Cargar el número en w0
-    ldr x1, =buffer + 8           // Apuntar al final del buffer (para escribir de derecha a izquierda)
-    mov w2, #8                    // Número de dígitos en hexadecimal (32 bits = 8 dígitos hexadecimales)
+main:
+    stp x29, x30, [sp, -16]!
+    mov x29, sp
 
-convertir_loop:
-    // Obtener el dígito menos significativo
-    and w3, w0, #0xF              // Extraer los últimos 4 bits de w0 (dígito hexadecimal)
-    
-    // Convertir el dígito a su valor ASCII
-    cmp w3, #9
-    add w3, w3, #'0'              // Si w3 <= 9, conviértelo a '0' - '9'
-    ble almacenar_digito
-    add w3, w3, #('A' - '9' - 1)  // Si w3 > 9, conviértelo a 'A' - 'F'
+    // Pedir número decimal
+    adrp x0, msg_input
+    add x0, x0, :lo12:msg_input
+    bl printf
 
-almacenar_digito:
-    strb w3, [x1, #-1]!           // Almacenar el dígito en el buffer y avanzar hacia atrás
+    // Leer número decimal
+    sub sp, sp, #16
+    mov x2, sp
+    adrp x0, formato_in
+    add x0, x0, :lo12:formato_in
+    mov x1, x2
+    bl scanf
+    ldr x19, [sp]  // x19 = número decimal ingresado
+    add sp, sp, #16
 
-    // Desplazar el número a la derecha en 4 bits (descartar el dígito menos significativo)
-    lsr w0, w0, #4                // w0 = w0 >> 4
+    // Reservar espacio para el resultado hexadecimal (16 caracteres máximo para 64 bits)
+    sub sp, sp, #16
+    mov x20, sp  // x20 = dirección base del resultado hexadecimal
 
-    // Decrementar el contador de dígitos
-    subs w2, w2, #1               // Restar 1 de w2
-    bne convertir_loop            // Si w2 no es cero, repetir el bucle
+    // Convertir a hexadecimal
+    mov x21, #15  // x21 = índice del carácter actual (empezamos desde el final)
+    mov x22, #0   // x22 = contador de caracteres significativos
 
-    // Preparación para imprimir la representación hexadecimal
-    ldr x0, =msg_resultado        // Cargar el mensaje de resultado
-    ldr x1, =buffer               // Cargar la dirección del buffer en x1 para printf
+convert_loop:
+    and x23, x19, #15  // x23 = 4 bits menos significativos
+    adrp x24, hex_chars
+    add x24, x24, :lo12:hex_chars
+    ldrb w23, [x24, x23]  // Cargar carácter hexadecimal correspondiente
+    strb w23, [x20, x21]  // Guardar el carácter en el resultado
+    lsr x19, x19, #4  // Desplazar el número 4 bits a la derecha
+    sub x21, x21, #1  // Mover al siguiente carácter (de derecha a izquierda)
+    add x22, x22, #1  // Incrementar contador de caracteres
+    cbnz x19, convert_loop  // Continuar si el número no es cero
 
-    // Llamada a printf para mostrar el resultado en hexadecimal
-    bl printf                     // Llamada a printf para mostrar el resultado
+    // Ajustar el puntero al inicio del resultado hexadecimal
+    add x20, x20, x21
+    add x20, x20, #1
+
+    // Imprimir mensaje de salida
+    adrp x0, msg_output
+    add x0, x0, :lo12:msg_output
+    bl printf
+
+    // Imprimir resultado hexadecimal
+print_loop:
+    ldrb w1, [x20], #1  // Cargar siguiente carácter y avanzar puntero
+    adrp x0, formato_out
+    add x0, x0, :lo12:formato_out
+    bl printf
+    subs x22, x22, #1  // Decrementar contador de caracteres
+    b.ne print_loop  // Continuar si quedan caracteres por imprimir
+
+    // Imprimir nueva línea
+    adrp x0, newline
+    add x0, x0, :lo12:newline
+    bl printf
+
+    // Liberar espacio del resultado hexadecimal
+    add sp, sp, #16
 
     // Salir del programa
-    mov x8, #93                   // Código de salida para syscall exit en ARM64
-    mov x0, #0                    // Código de retorno 0
-    svc #0                        // Llamada al sistema
+    mov x0, #0
+    ldp x29, x30, [sp], #16
+    ret
