@@ -3,63 +3,102 @@
 // Descripción: Contar vocales y consonantes en una cadena en ARM64
 // Asciinema: 
 
-.section .data
-cadena: .asciz "hola mundo"           // Cadena en la que contaremos vocales y consonantes
-msg_resultado: .asciz "Vocales: %d, Consonantes: %d\n"
+.data
+    msg_ingreso: .asciz "Ingrese una cadena: "
+    msg_vocales: .asciz "Número de vocales: %d\n"
+    msg_consonantes: .asciz "Número de consonantes: %d\n"
+    buffer: .skip 100
+    formato_str: .asciz "%99s"
 
-    .section .text
-    .global _start
+.text
+.global main
+.align 2
 
-_start:
-    // Cargar la dirección de la cadena en x0
-    ldr x0, =cadena                  // x0 apunta al inicio de la cadena
+main:
+    // Prólogo
+    stp x29, x30, [sp, -32]!           // Aumentamos espacio para variables locales
+    mov x29, sp
+    
+    // Inicializar contadores
+    str xzr, [x29, 16]                 // Contador de vocales en [x29, 16]
+    str xzr, [x29, 24]                 // Contador de consonantes en [x29, 24]
 
-    // Inicializar los contadores
-    mov w1, #0                       // w1 será el contador de vocales
-    mov w2, #0                       // w2 será el contador de consonantes
+    // Mostrar mensaje de ingreso
+    adrp x0, msg_ingreso
+    add x0, x0, :lo12:msg_ingreso
+    bl printf
+
+    // Leer cadena
+    adrp x0, formato_str
+    add x0, x0, :lo12:formato_str
+    adrp x1, buffer
+    add x1, x1, :lo12:buffer
+    bl scanf
+
+    // Preparar para procesar la cadena
+    adrp x0, buffer
+    add x0, x0, :lo12:buffer
+    mov x1, #0                         // Índice
 
 contar_loop:
-    // Cargar el siguiente carácter
-    ldrb w3, [x0], #1                // Cargar el byte actual en w3 y avanzar puntero x0
-    cbz w3, imprimir_resultado       // Si encontramos el fin de cadena (byte 0), salimos del bucle
+    ldrb w2, [x0, x1]                 // Cargar carácter actual
+    cbz w2, fin_conteo                // Si es 0, terminar
 
-    // Comprobar si es una vocal
-    cmp w3, #'a'
+    // Convertir a minúscula si es mayúscula
+    cmp w2, #'A'
+    b.lt no_es_letra
+    cmp w2, #'Z'
+    b.gt check_minuscula
+    add w2, w2, #32                   // Convertir a minúscula
+
+check_minuscula:
+    cmp w2, #'a'
+    b.lt no_es_letra
+    cmp w2, #'z'
+    b.gt no_es_letra
+
+    // Verificar si es vocal
+    cmp w2, #'a'
     b.eq es_vocal
-    cmp w3, #'e'
+    cmp w2, #'e'
     b.eq es_vocal
-    cmp w3, #'i'
+    cmp w2, #'i'
     b.eq es_vocal
-    cmp w3, #'o'
+    cmp w2, #'o'
     b.eq es_vocal
-    cmp w3, #'u'
+    cmp w2, #'u'
     b.eq es_vocal
 
-    // Si no es vocal, comprobar si es una consonante
-    cmp w3, #'a'                     // Verificar que esté entre 'a' y 'z'
-    blt contar_loop                  // Si es menor que 'a', no es letra, saltar al siguiente
-    cmp w3, #'z'
-    bgt contar_loop                  // Si es mayor que 'z', no es letra, saltar al siguiente
-
-    // Incrementar el contador de consonantes
-    add w2, w2, #1
-    b contar_loop                    // Repetir el bucle
+    // Si llegamos aquí, es consonante
+    ldr x3, [x29, 24]                 // Cargar contador de consonantes
+    add x3, x3, #1                    // Incrementar
+    str x3, [x29, 24]                 // Guardar contador
+    b siguiente_char
 
 es_vocal:
-    // Incrementar el contador de vocales
-    add w1, w1, #1
-    b contar_loop                    // Repetir el bucle
+    ldr x3, [x29, 16]                 // Cargar contador de vocales
+    add x3, x3, #1                    // Incrementar
+    str x3, [x29, 16]                 // Guardar contador
 
-imprimir_resultado:
-    // Preparación para imprimir los resultados
-    ldr x0, =msg_resultado           // Mensaje para imprimir
-    mov x1, w1                       // Mover el contador de vocales a x1
-    mov x2, w2                       // Mover el contador de consonantes a x2
+siguiente_char:
+no_es_letra:
+    add x1, x1, #1                    // Siguiente carácter
+    b contar_loop
 
-    // Llamada a printf para mostrar el resultado
-    bl printf                        // Llamada a printf para mostrar vocales y consonantes
+fin_conteo:
+    // Mostrar número de vocales
+    adrp x0, msg_vocales
+    add x0, x0, :lo12:msg_vocales
+    ldr x1, [x29, 16]                 // Cargar contador de vocales
+    bl printf
 
-    // Salir del programa
-    mov x8, #93                      // Código de salida para syscall exit en ARM64
-    mov x0, #0                       // Código de retorno 0
-    svc #0                           // Llamada al sistema
+    // Mostrar número de consonantes
+    adrp x0, msg_consonantes
+    add x0, x0, :lo12:msg_consonantes
+    ldr x1, [x29, 24]                 // Cargar contador de consonantes
+    bl printf
+
+    // Epílogo y retorno
+    mov w0, #0
+    ldp x29, x30, [sp], 32
+    ret
