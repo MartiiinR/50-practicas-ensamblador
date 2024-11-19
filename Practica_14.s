@@ -3,64 +3,62 @@
 // Descripción: Busqueda Lineal de un numero en un arreglo
 // Asciinema: 
 
-section .data
-arreglo: .word 10, 25, 3, 48, 5, 30     // Arreglo de números enteros
-tamano: .word 6                         // Tamaño del arreglo
-elemento: .word 48                       // Elemento que queremos buscar
-msg_found: .asciz "Elemento encontrado en el índice: %d\n"
-msg_not_found: .asciz "Elemento no encontrado\n"
+.data
+array:      .word 12, 45, 7, 23, 67, 89, 34, 56, 90, 14 // Arreglo de ejemplo
+arr_len:    .word 10                                    // Longitud del arreglo
+target:     .word 23                                    // Valor a buscar
+msg_found:  .asciz "El valor %d se encuentra en el arreglo.\n" // Mensaje cuando se encuentra el valor
+msg_not_found: .asciz "El valor %d NO se encuentra en el arreglo.\n" // Mensaje cuando no se encuentra el valor
 
-    .section .text
-    .global _start
+    .text
+    .global main
 
-_start:
-    // Cargar el tamaño del arreglo
-    ldr x1, =tamano            // Dirección del tamaño
-    ldr w1, [x1]               // Cargar el tamaño en w1 (número de elementos)
-
-    // Cargar el elemento que queremos buscar
-    ldr x4, =elemento          // Dirección del elemento a buscar
-    ldr w4, [x4]               // Cargar el elemento en w4
-
-    // Cargar la dirección del arreglo
-    ldr x2, =arreglo           // x2 apunta al inicio del arreglo
+main:
+    // Guardar el puntero de marco y el enlace de retorno
+    stp x29, x30, [sp, -16]!     // Reservar espacio en la pila
+    mov x29, sp                  // Establecer el puntero de marco
+    
+    // Cargar la dirección y longitud del arreglo
+    adrp x0, arr_len             // Cargar la página base de arr_len en x0
+    add x0, x0, :lo12:arr_len    // Cargar el desplazamiento bajo de arr_len
+    ldr w1, [x0]                 // Obtener la longitud del arreglo en w1
+    adrp x2, array               // Cargar la página base de array en x2
+    add x2, x2, :lo12:array      // Cargar el desplazamiento bajo de array
+    adrp x3, target              // Cargar la página base de target en x3
+    add x3, x3, :lo12:target     // Cargar el desplazamiento bajo de target
+    ldr w5, [x3]                 // Cargar el valor objetivo en w5
 
     // Inicializar el índice
-    mov w5, #0                 // Índice del arreglo
+    mov x6, #0                   // Índice inicial (x6) = 0
 
-search_loop:
-    // Verificar si hemos recorrido todo el arreglo
-    cmp w5, w1                 // Comparar índice con el tamaño
-    beq not_found              // Si w5 == w1, terminamos el bucle (no encontrado)
-
-    // Cargar el elemento actual del arreglo
-    ldr w3, [x2, w5, LSL #2]   // Cargar el elemento arreglo[w5] en w3
-
-    // Comparar el elemento actual con el valor buscado
-    cmp w3, w4                 // Comparar w3 (elemento actual) con w4 (elemento buscado)
-    beq found                  // Si son iguales, saltamos a "found"
-
-    // Incrementar el índice
-    add w5, w5, #1             // Incrementar el índice
-    b search_loop              // Repetir el bucle
-
-not_found:
-    // Preparación para imprimir "Elemento no encontrado"
-    ldr x0, =msg_not_found     // Cargar mensaje de "Elemento no encontrado"
-    mov x1, #1                 // Descriptor de archivo 1 (stdout)
-    mov x2, #22                // Longitud del mensaje
-    mov x8, #64                // syscall write
-    svc #0                     // Llamada al sistema
-    b end_program              // Saltar al final
+loop:
+    // Comparar el índice (x6) con la longitud del arreglo (w1)
+    // Se usa `w6` como una extensión de 32 bits de `x6`
+    cmp w6, w1                   // Comparar x6 (como w6) con w1
+    bge end_loop                 // Si el índice es mayor o igual, salir del bucle
+    ldr w4, [x2, x6, LSL #2]     // Cargar el valor del arreglo en w4 (multiplicamos x6 por 4)
+    cmp w4, w5                   // Comparar el valor en el arreglo (w4) con el valor objetivo (w5)
+    beq found                    // Si el valor es igual, saltar a la etiqueta found
+    add x6, x6, #1               // Incrementar el índice
+    b loop                       // Continuar con la siguiente iteración
 
 found:
-    // Preparación para imprimir "Elemento encontrado"
-    ldr x0, =msg_found         // Cargar mensaje de "Elemento encontrado"
-    mov x1, w5                 // Índice donde se encontró el elemento
-    bl printf                  // Llamada a printf para mostrar el índice
+    // Imprimir el mensaje de valor encontrado
+    adrp x0, msg_found           // Cargar la página base de msg_found en x0
+    add x0, x0, :lo12:msg_found  // Cargar el desplazamiento bajo de msg_found
+    mov w1, w5                   // Mover el valor encontrado (w5) a w1 para printf
+    bl printf                    // Llamar a printf para imprimir el mensaje
+
+    b end_program                // Ir al final del programa
+
+end_loop:
+    // Imprimir el mensaje de valor no encontrado
+    adrp x0, msg_not_found       // Cargar la página base de msg_not_found en x0
+    add x0, x0, :lo12:msg_not_found // Cargar el desplazamiento bajo de msg_not_found
+    mov w1, w5                   // Mover el valor objetivo (w5) a w1 para printf
+    bl printf                    // Llamar a printf para imprimir el mensaje
 
 end_program:
-    // Salir del programa
-    mov x8, #93                // Código de salida para syscall exit en ARM64
-    mov x0, #0                 // Código de retorno 0
-    svc #0                     // Llamada al sistema
+    // Restaurar el puntero de pila y regresar
+    ldp x29, x30, [sp], 16       // Restaurar el puntero de marco y el enlace de retorno
+    ret                          // Regresar del programa
