@@ -4,8 +4,8 @@
 // Asciinema: 
 
 .data
-array:      .word 1, 3, 5, 7, 9, 11, 13, 15, 17, 19    // Arreglo ordenado para búsqueda binaria
-arr_len:    .word 10                                    // Longitud del arreglo
+array:      .word 1, 3, 5, 7, 9, 11, 13, 15, 17, 19, 21    // Arreglo ordenado para búsqueda binaria
+arr_len:    .word 11                                   // Longitud del arreglo
 target:     .word 7                                     // Valor a buscar
 msg_found:  .asciz "El valor %d fue encontrado en la posición %d\n"
 msg_not:    .asciz "El valor %d no fue encontrado en el arreglo\n"
