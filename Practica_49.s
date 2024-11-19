@@ -4,7 +4,7 @@
 // Asciinema: 
 
 .data
-    prompt: .asciz "Ingrese una cadena de texto (máximo 100 caracteres): "
+    prompt: .asciz "Ingrese una cadena de texto: "
     output: .asciz "Usted ingresó: %s\n"
     input_buffer: .skip 101  // 100 caracteres + 1 para el carácter nulo
 
