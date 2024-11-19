@@ -3,45 +3,80 @@
 // Descripción: Convertir un numero decimal a binario
 // Asciinema: 
 
-.section .data
-num: .word 25                       // Número decimal a convertir (ejemplo: 25)
-buffer: .space 33                   // Espacio para la cadena binaria (32 bits + nulo)
-msg_resultado: .asciz "Representación binaria: %s\n"
+.data
+    msg_input: .asciz "Ingrese un número decimal positivo: "
+    msg_output: .asciz "El número en binario es: "
+    formato_in: .asciz "%ld"
+    formato_out: .asciz "%c"
+    newline: .asciz "\n"
 
-    .section .text
-    .global _start
+.text
+.global main
+.align 2
 
-_start:
-    // Cargar el número en el registro
-    ldr x0, =num                   // Dirección del número
-    ldr w0, [x0]                   // Cargar el número en w0
-    ldr x1, =buffer + 32           // Apuntar al final del buffer
-    mov w2, #32                    // Número de bits (32)
+main:
+    stp x29, x30, [sp, -16]!
+    mov x29, sp
 
-convertir_loop:
-    // Verificar el bit más significativo y almacenar '0' o '1' en el buffer
-    and w3, w0, #0x80000000        // Extraer el bit más significativo
-    cbz w3, es_cero                // Si el bit es 0, saltar a es_cero
-    mov w4, #'1'                   // Si el bit es 1, almacenar '1'
-    b almacenar_bit
+    // Pedir número decimal
+    adrp x0, msg_input
+    add x0, x0, :lo12:msg_input
+    bl printf
 
-es_cero:
-    mov w4, #'0'                   // Almacenar '0' si el bit es 0
+    // Leer número decimal
+    sub sp, sp, #16
+    mov x2, sp
+    adrp x0, formato_in
+    add x0, x0, :lo12:formato_in
+    mov x1, x2
+    bl scanf
+    ldr x19, [sp]  // x19 = número decimal ingresado
+    add sp, sp, #16
 
-almacenar_bit:
-    strb w4, [x1, #-1]!            // Almacenar el bit en el buffer y avanzar hacia atrás
-    lsl w0, w0, #1                 // Desplazar el número a la izquierda (siguiente bit)
-    subs w2, w2, #1                // Decrementar el contador de bits
-    bne convertir_loop             // Repetir hasta que w2 sea 0
+    // Reservar espacio para el resultado binario (64 bits máximo)
+    sub sp, sp, #64
+    mov x20, sp  // x20 = dirección base del resultado binario
 
-    // Preparación para imprimir la representación binaria
-    ldr x0, =msg_resultado         // Cargar el mensaje de resultado
-    ldr x1, =buffer                // Cargar el inicio del buffer en x1 para printf
+    // Convertir a binario
+    mov x21, #63  // x21 = índice del bit actual (empezamos desde el final)
+    mov x22, #0   // x22 = contador de bits significativos
 
-    // Llamada a printf para mostrar el resultado en binario
-    bl printf                      // Llamada a printf para mostrar el resultado
+convert_loop:
+    and x23, x19, #1  // x23 = bit menos significativo
+    add x23, x23, #48 // Convertir a carácter ASCII ('0' o '1')
+    strb w23, [x20, x21]  // Guardar el bit en el resultado
+    lsr x19, x19, #1  // Desplazar el número a la derecha
+    sub x21, x21, #1  // Mover al siguiente bit (de derecha a izquierda)
+    add x22, x22, #1  // Incrementar contador de bits
+    cbnz x19, convert_loop  // Continuar si el número no es cero
+
+    // Ajustar el puntero al inicio del resultado binario
+    add x20, x20, x21
+    add x20, x20, #1
+
+    // Imprimir mensaje de salida
+    adrp x0, msg_output
+    add x0, x0, :lo12:msg_output
+    bl printf
+
+    // Imprimir resultado binario
+print_loop:
+    ldrb w1, [x20], #1  // Cargar siguiente carácter y avanzar puntero
+    adrp x0, formato_out
+    add x0, x0, :lo12:formato_out
+    bl printf
+    subs x22, x22, #1  // Decrementar contador de bits
+    b.ne print_loop  // Continuar si quedan bits por imprimir
+
+    // Imprimir nueva línea
+    adrp x0, newline
+    add x0, x0, :lo12:newline
+    bl printf
+
+    // Liberar espacio del resultado binario
+    add sp, sp, #64
 
     // Salir del programa
-    mov x8, #93                    // Código de salida para syscall exit en ARM64
-    mov x0, #0                     // Código de retorno 0
-    svc #0                         // Llamada al sistema
+    mov x0, #0
+    ldp x29, x30, [sp], #16
+    ret
