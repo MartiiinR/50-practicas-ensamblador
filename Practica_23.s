@@ -3,45 +3,49 @@
 // Descripción: Conversion de entero a ASCII
 // Asciinema: 
 
-.section .data
-msg_resultado: .asciz "El número en ASCII es: %s\n"
-buffer: .space 20               // Buffer para almacenar el número convertido en ASCII
+.data
+numero:     .word   12            // Número entero a convertir
+ascii_res:  .skip   2            // Espacio para el carácter ASCII (1 byte) + null terminator
+msg_input:  .asciz "Número entero ingresado: %d\n"
+msg_result: .asciz "Carácter ASCII resultante: %c\n"
 
-    .section .text
-    .global _start
+    .text
+    .global main
+main:
+    // Guardar el puntero de marco y el enlace de retorno
+    stp x29, x30, [sp, -16]!    // Reservar espacio en la pila
+    mov x29, sp                  // Establecer el puntero de marco
+    
+    // Mostrar el número entero original
+    adrp x0, msg_input          // Cargar la página base del mensaje de entrada
+    add x0, x0, :lo12:msg_input // Cargar el desplazamiento bajo del mensaje
+    adrp x1, numero             // Cargar la dirección del número
+    add x1, x1, :lo12:numero
+    ldr w1, [x1]                // Cargar el número en w1
+    bl printf                    // Imprimir el número
 
-_start:
-    // Definir el número que queremos convertir
-    mov x0, #1234               // Número a convertir en ASCII (ejemplo: 1234)
-    ldr x1, =buffer + 19        // Apuntar al final del buffer
-    mov w2, #10                 // Base 10 para la conversión
+    // Realizar la conversión de entero a ASCII
+    adrp x0, numero             // Cargar la dirección del número nuevamente
+    add x0, x0, :lo12:numero
+    ldr w1, [x0]                // Cargar el número en w1
+    add w1, w1, #48             // Sumar 48 para obtener el código ASCII
 
-convertir_loop:
-    // Obtener el último dígito
-    udiv x3, x0, x2             // x3 = x0 / 10 (cociente)
-    msub x4, x3, x2, x0         // x4 = x0 - (x3 * 10), residuo (último dígito)
+    // Guardar el resultado ASCII
+    adrp x0, ascii_res          // Cargar la dirección del buffer ASCII
+    add x0, x0, :lo12:ascii_res
+    strb w1, [x0]               // Guardar el carácter ASCII
+    mov w1, #0                  // Null terminator
+    strb w1, [x0, #1]           // Guardar el null terminator
 
-    // Convertir el dígito a ASCII y almacenar en el buffer
-    add x4, x4, #'0'            // Convertir el dígito a ASCII (0 -> '0', 1 -> '1', etc.)
-    strb w4, [x1], #-1          // Almacenar en el buffer y mover el puntero hacia atrás
+    // Imprimir el resultado
+    adrp x0, msg_result         // Cargar la dirección del mensaje de resultado
+    add x0, x0, :lo12:msg_result
+    adrp x1, ascii_res          // Cargar la dirección del carácter ASCII
+    add x1, x1, :lo12:ascii_res
+    ldrb w1, [x1]               // Cargar el carácter ASCII en w1
+    bl printf                   // Imprimir el resultado
 
-    // Actualizar x0 con el cociente para procesar el siguiente dígito
-    mov x0, x3
-    cbz x0, imprimir_resultado  // Si x0 es 0, terminamos la conversión
-
-    // Repetir el bucle
-    b convertir_loop
-
-imprimir_resultado:
-    // Preparar el mensaje de resultado
-    ldr x0, =msg_resultado      // Mensaje para imprimir
-    add x1, x1, #1              // Ajustar x1 al inicio de la cadena en el buffer
-    mov x2, x1                  // Apuntar x2 a la cadena en el buffer
-
-    // Llamada a printf para mostrar el número en ASCII
-    bl printf                   // Llamada a printf para mostrar el resultado
-
-    // Salir del programa
-    mov x8, #93                 // Código de salida para syscall exit en ARM64
-    mov x0, #0                  // Código de retorno 0
-    svc #0                      // Llamada al sistema
+    // Restaurar y retornar
+    mov w0, #0                  // Código de retorno 0
+    ldp x29, x30, [sp], 16      // Restaurar registros
+    ret
