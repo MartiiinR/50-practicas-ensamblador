@@ -4,7 +4,7 @@
 // Asciinema: 
 
 .data
-array:      .word 12, 45, 7, 23, 67, 89, 34, 56, 90, 14 // Arreglo de ejemplo
+array:      .word 22, 45, 7, 23, 27, 89, 64, 56, 90, 14 // Arreglo de ejemplo
 arr_len:    .word 10                                    // Longitud del arreglo
 target:     .word 23                                    // Valor a buscar
 msg_found:  .asciz "El valor %d se encuentra en el arreglo.\n" // Mensaje cuando se encuentra el valor
