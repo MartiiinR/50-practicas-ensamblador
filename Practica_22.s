@@ -3,45 +3,38 @@
 // Descripción: Conversion de ASCII a un entero
 // Asciinema: 
 
-  .section .data
-numero_ascii: .asciz "2456"       // Número en ASCII que queremos convertir
-msg_resultado: .asciz "El número entero es: %d\n"
+.data
+ascii_char: .asciz "5"           // Carácter ASCII a convertir
+msg_input:  .asciz "Carácter ASCII ingresado: %c\n"
+msg_result: .asciz "Valor numérico: %d\n"
 
-    .section .text
-    .global _start
+    .text
+    .global main
+main:
+    // Guardar el puntero de marco y el enlace de retorno
+    stp x29, x30, [sp, -16]!    // Reservar espacio en la pila
+    mov x29, sp                  // Establecer el puntero de marco
+    
+    // Mostrar el carácter ASCII ingresado
+    adrp x0, msg_input          // Cargar la página base del mensaje de entrada
+    add x0, x0, :lo12:msg_input // Cargar el desplazamiento bajo del mensaje
+    adrp x1, ascii_char         // Cargar la dirección del carácter ASCII
+    add x1, x1, :lo12:ascii_char
+    ldrb w1, [x1]              // Cargar el carácter en w1
+    bl printf                   // Imprimir el carácter
 
-_start:
-    // Cargar la dirección del número ASCII
-    ldr x0, =numero_ascii       // x0 apunta al inicio de la cadena ASCII
+    // Realizar la conversión de ASCII a entero
+    adrp x0, ascii_char         // Cargar la dirección del carácter nuevamente
+    add x0, x0, :lo12:ascii_char
+    ldrb w1, [x0]              // Cargar el carácter en w1
+    sub w1, w1, #48            // Restar 48 (ASCII '0') para obtener el valor numérico
 
-    // Inicializar el valor entero en 0
-    mov w1, #0                  // w1 será el acumulador para el número entero
-    mov w2, #10                 // w2 será el multiplicador para aritmética en base 10
+    // Imprimir el resultado
+    adrp x0, msg_result        // Cargar la dirección del mensaje de resultado
+    add x0, x0, :lo12:msg_result
+    bl printf                  // Imprimir el resultado
 
-convertir_loop:
-    // Cargar el carácter actual
-    ldrb w3, [x0], #1           // Cargar el siguiente byte en w3 y avanzar el puntero x0
-    cbz w3, imprimir_resultado  // Si w3 es 0 (fin de cadena), salir del bucle
-
-    // Convertir el carácter ASCII a su valor numérico
-    sub w3, w3, #'0'            // w3 = w3 - '0', convierte de ASCII a número (ej. '3' -> 3)
-
-    // Actualizar el número acumulado
-    mul w1, w1, w2              // w1 = w1 * 10, desplazar el número actual a la izquierda
-    add w1, w1, w3              // w1 = w1 + w3, agregar el nuevo dígito
-
-    // Repetir el bucle
-    b convertir_loop
-
-imprimir_resultado:
-    // Preparación para imprimir el número entero convertido
-    ldr x0, =msg_resultado      // Cargar el mensaje de resultado
-    mov x1, w1                  // Mover el número convertido a x1 para imprimir
-
-    // Llamada a printf para mostrar el número entero
-    bl printf                   // Llamada a printf para mostrar el número
-
-    // Salir del programa
-    mov x8, #93                 // Código de salida para syscall exit en ARM64
-    mov x0, #0                  // Código de retorno 0
-    svc #0                      // Llamada al sistema
+    // Restaurar y retornar
+    mov w0, #0                 // Código de retorno 0
+    ldp x29, x30, [sp], 16     // Restaurar registros
+    ret  
