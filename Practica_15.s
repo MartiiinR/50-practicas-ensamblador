@@ -3,76 +3,77 @@
 // Descripción: Busqueda binaria de un numero en un arreglo.
 // Asciinema: 
 
-.section .data
-arreglo: .word 3, 10, 15, 20, 25, 30, 35, 40  // Arreglo ordenado de números enteros
-tamano: .word 8                               // Tamaño del arreglo
-elemento: .word 25                            // Elemento que queremos buscar
-msg_found: .asciz "Elemento encontrado en el índice: %d\n"
-msg_not_found: .asciz "Elemento no encontrado\n"
+.data
+array:      .word 1, 3, 5, 7, 9, 11, 13, 15, 17, 19    // Arreglo ordenado para búsqueda binaria
+arr_len:    .word 10                                    // Longitud del arreglo
+target:     .word 7                                     // Valor a buscar
+msg_found:  .asciz "El valor %d fue encontrado en la posición %d\n"
+msg_not:    .asciz "El valor %d no fue encontrado en el arreglo\n"
 
-    .section .text
-    .global _start
-
-_start:
-    // Cargar el tamaño del arreglo
-    ldr x1, =tamano            // Dirección del tamaño
-    ldr w1, [x1]               // Cargar el tamaño en w1 (número de elementos)
-
-    // Cargar el elemento que queremos buscar
-    ldr x4, =elemento          // Dirección del elemento a buscar
-    ldr w4, [x4]               // Cargar el elemento en w4
-
-    // Cargar la dirección del arreglo
-    ldr x2, =arreglo           // x2 apunta al inicio del arreglo
-
-    // Inicializar los límites del arreglo
-    mov w5, #0                 // Límite inferior (inicio del arreglo)
-    sub w6, w1, #1             // Límite superior (fin del arreglo), w6 = w1 - 1
+    .text
+    .global main
+main:
+    // Guardar el puntero de marco y el enlace de retorno
+    stp x29, x30, [sp, -16]!     // Reservar espacio en la pila
+    mov x29, sp                   // Establecer el puntero de marco
+    
+    // Inicializar registros para búsqueda binaria
+    adrp x0, array               // Cargar la página base del array
+    add x0, x0, :lo12:array      // Cargar el desplazamiento bajo del array
+    
+    mov x1, #0                   // left = 0
+    adrp x2, arr_len            
+    add x2, x2, :lo12:arr_len
+    ldr w2, [x2]                 // Cargar longitud del array
+    sub x2, x2, #1              // right = length - 1
+    
+    adrp x3, target
+    add x3, x3, :lo12:target
+    ldr w3, [x3]                // Cargar valor objetivo
 
 binary_search:
-    // Verificar si el límite inferior es mayor que el límite superior
-    cmp w5, w6                 // Comparar límite inferior con límite superior
-    bgt not_found              // Si w5 > w6, el elemento no está en el arreglo
-
-    // Calcular el índice medio: mid = (low + high) / 2
-    add w7, w5, w6             // w7 = low + high
-    lsr w7, w7, #1             // Dividimos por 2 (desplazamiento a la derecha)
-
-    // Cargar el elemento en el índice medio
-    ldr w3, [x2, w7, LSL #2]   // Cargar el valor en arreglo[mid] en w3
-
-    // Comparar el elemento en el índice medio con el elemento buscado
-    cmp w3, w4                 // Comparar w3 (elemento en medio) con w4 (elemento buscado)
-    beq found                  // Si son iguales, el elemento ha sido encontrado
-
-    // Ajustar los límites según el valor del elemento medio
-    blt adjust_upper           // Si w3 < w4, buscamos en la mitad superior
-    mov w6, w7                 // Si w3 > w4, ajustamos el límite superior a mid - 1
-    sub w6, w6, #1
-    b binary_search            // Repetir el bucle
-
-adjust_upper:
-    mov w5, w7                 // Ajustamos el límite inferior a mid + 1
-    add w5, w5, #1
-    b binary_search            // Repetir el bucle
+    cmp x1, x2                   // Comparar left con right
+    bgt not_found               // Si left > right, elemento no encontrado
+    
+    // Calcular mid = (left + right) / 2
+    add x4, x1, x2              // x4 = left + right
+    lsr x4, x4, #1              // x4 = (left + right) / 2
+    
+    // Cargar array[mid]
+    lsl x5, x4, #2              // x5 = mid * 4 (tamaño de word)
+    add x5, x0, x5              // x5 = dirección de array[mid]
+    ldr w6, [x5]                // w6 = array[mid]
+    
+    // Comparar array[mid] con target
+    cmp w6, w3
+    beq found                   // Si son iguales, elemento encontrado
+    blt greater                 // Si array[mid] < target, buscar en mitad superior
+    
+    // Buscar en mitad inferior
+    sub x2, x4, #1              // right = mid - 1
+    b binary_search
+    
+greater:
+    add x1, x4, #1              // left = mid + 1
+    b binary_search
+    
+found:
+    // Imprimir mensaje de éxito
+    adrp x0, msg_found
+    add x0, x0, :lo12:msg_found
+    mov w1, w3                  // Primer argumento: valor buscado
+    mov w2, w4                  // Segundo argumento: posición encontrada
+    bl printf
+    b end
 
 not_found:
-    // Preparación para imprimir "Elemento no encontrado"
-    ldr x0, =msg_not_found     // Cargar mensaje de "Elemento no encontrado"
-    mov x1, #1                 // Descriptor de archivo 1 (stdout)
-    mov x2, #22                // Longitud del mensaje
-    mov x8, #64                // syscall write
-    svc #0                     // Llamada al sistema
-    b end_program              // Saltar al final
+    // Imprimir mensaje de no encontrado
+    adrp x0, msg_not
+    add x0, x0, :lo12:msg_not
+    mov w1, w3                  // Primer argumento: valor buscado
+    bl printf
 
-found:
-    // Preparación para imprimir "Elemento encontrado"
-    ldr x0, =msg_found         // Cargar mensaje de "Elemento encontrado"
-    mov x1, w7                 // Índice donde se encontró el elemento
-    bl printf                  // Llamada a printf para mostrar el índice
-
-end_program:
-    // Salir del programa
-    mov x8, #93                // Código de salida para syscall exit en ARM64
-    mov x0, #0                 // Código de retorno 0
-    svc #0                     // Llamada al sistema
+end:
+    // Restaurar y retornar
+    ldp x29, x30, [sp], 16
+    ret
