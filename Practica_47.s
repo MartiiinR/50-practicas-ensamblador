@@ -3,43 +3,73 @@
 // Descripción: Deteccion de desbordamiento en suma
 // Asciinema: 
 
+.data
+    msg_input1: .asciz "Ingrese el primer número: "
+    msg_input2: .asciz "Ingrese el segundo número: "
+    msg_result: .asciz "Resultado de la suma: %ld\n"
+    msg_overflow: .asciz "¡Se ha producido un desbordamiento!\n"
+    msg_no_overflow: .asciz "No se ha producido desbordamiento.\n"
+    formato_in: .asciz "%ld"
 
- .section .data
-num1: .word 2147483647              // Primer número (máximo entero positivo de 32 bits)
-num2: .word 1                        // Segundo número (este causará desbordamiento)
-msg_resultado: .asciz "Resultado de la suma: %d\n"
-msg_overflow: .asciz "Advertencia: Desbordamiento en la suma\n"
+.text
+.global main
+.align 2
 
-    .section .text
-    .global _start
+main:
+    stp x29, x30, [sp, -32]!
+    mov x29, sp
 
-_start:
-    // Cargar los números en registros
-    ldr x0, =num1                   // Dirección de num1
-    ldr w0, [x0]                    // Cargar num1 en w0
+    // Pedir primer número
+    adrp x0, msg_input1
+    add x0, x0, :lo12:msg_input1
+    bl printf
 
-    ldr x1, =num2                   // Dirección de num2
-    ldr w1, [x1]                    // Cargar num2 en w1
+    // Leer primer número
+    add x1, sp, 16
+    adrp x0, formato_in
+    add x0, x0, :lo12:formato_in
+    bl scanf
+    ldr x19, [sp, 16]  // x19 = primer número
 
-    // Realizar la suma con verificación de desbordamiento
-    adds w2, w0, w1                 // Sumar w0 y w1, resultado en w2 y actualizar flags
+    // Pedir segundo número
+    adrp x0, msg_input2
+    add x0, x0, :lo12:msg_input2
+    bl printf
 
-    // Verificar si ocurrió desbordamiento
-    bvs overflow_detected           // Si el flag V (overflow) está activo, saltar a overflow_detected
+    // Leer segundo número
+    add x1, sp, 24
+    adrp x0, formato_in
+    add x0, x0, :lo12:formato_in
+    bl scanf
+    ldr x20, [sp, 24]  // x20 = segundo número
 
-    // Si no hubo desbordamiento, imprimir el resultado de la suma
-    ldr x0, =msg_resultado          // Cargar el mensaje de resultado
-    mov x1, w2                      // Mover el resultado de la suma a x1
-    bl printf                       // Llamada a printf para mostrar el resultado
-    b end_program                   // Terminar el programa
+    // Realizar la suma y detectar desbordamiento
+    adds x21, x19, x20  // x21 = resultado de la suma
 
-overflow_detected:
-    // Imprimir mensaje de desbordamiento
-    ldr x0, =msg_overflow           // Cargar el mensaje de advertencia
-    bl printf                       // Llamada a printf para mostrar el mensaje de desbordamiento
+    // Imprimir resultado
+    adrp x0, msg_result
+    add x0, x0, :lo12:msg_result
+    mov x1, x21
+    bl printf
+
+    // Verificar desbordamiento
+    b.vs overflow  // Saltar si hay desbordamiento (V flag set)
+
+    // No hay desbordamiento
+    adrp x0, msg_no_overflow
+    add x0, x0, :lo12:msg_no_overflow
+    bl printf
+    b end_program
+
+overflow:
+    // Hay desbordamiento
+    adrp x0, msg_overflow
+    add x0, x0, :lo12:msg_overflow
+    bl printf
 
 end_program:
     // Salir del programa
-    mov x8, #93                     // Código de salida para syscall exit en ARM64
-    mov x0, #0                      // Código de retorno 0
-    svc #0                          // Llamada al sistema
+    mov x0, #0
+    ldp x29, x30, [sp], 32
+    ret
+
