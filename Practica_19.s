@@ -3,58 +3,223 @@
 // Descripción: Suma de matrices 3x3.
 // Asciinema: 
 
- .section .data
-matrizA: .word 1, 2, 3, 4, 5, 6, 7, 8, 9      // Matriz A de 3x3
-matrizB: .word 9, 8, 7, 6, 5, 4, 3, 2, 1      // Matriz B de 3x3
-resultado: .space 36                          // Matriz de resultados (3x3)
+.data
+// Dimensiones de las matrices (3x3)
+N: .word 3          // Filas
+M: .word 3          // Columnas
 
-msg_resultado: .asciz "Resultado de la suma de matrices:\n%d %d %d\n%d %d %d\n%d %d %d\n"
+// Matrices
+matrix1: .zero 36    // 3x3 matriz (4 bytes por elemento)
+matrix2: .zero 36    // 3x3 matriz
+result: .zero 36     // Matriz resultado
 
-    .section .text
-    .global _start
+// Mensajes y formatos
+msg_matrix1: .asciz "\nIngrese los elementos de la primera matriz 3x3:\n"
+msg_matrix2: .asciz "\nIngrese los elementos de la segunda matriz 3x3:\n"
+msg_element: .asciz "Ingrese elemento [%d][%d]: "
+msg_result: .asciz "\nMatriz resultado:\n"
+fmt_input: .asciz "%d"
+fmt_output: .asciz "%4d "
+new_line: .asciz "\n"
 
-_start:
-    // Cargar las direcciones de las matrices
-    ldr x0, =matrizA           // x0 apunta al inicio de matrizA
-    ldr x1, =matrizB           // x1 apunta al inicio de matrizB
-    ldr x2, =resultado         // x2 apunta al inicio de la matriz resultado
+.text
+.global main
 
-    // Definir el tamaño de la matriz
-    mov w3, #9                 // Número de elementos (3x3 = 9)
+main:
+    // Prólogo
+    stp x29, x30, [sp, -16]!
+    mov x29, sp
 
-suma_loop:
-    // Verificar si hemos procesado todos los elementos
-    cbz w3, print_resultado    // Si w3 es 0, terminamos el bucle
+    // Anunciar entrada de primera matriz
+    adrp x0, msg_matrix1
+    add x0, x0, :lo12:msg_matrix1
+    bl printf
 
-    // Cargar el elemento de matrizA y matrizB
-    ldr w4, [x0], #4           // Cargar siguiente elemento de matrizA en w4 y avanzar puntero
-    ldr w5, [x1], #4           // Cargar siguiente elemento de matrizB en w5 y avanzar puntero
+    // Leer primera matriz
+    adrp x20, matrix1
+    add x20, x20, :lo12:matrix1
+    mov x19, #0          // i = 0
 
-    // Realizar la suma y almacenar en la matriz resultado
-    add w6, w4, w5             // w6 = w4 + w5
-    str w6, [x2], #4           // Almacenar el resultado en la matriz resultado y avanzar puntero
+loop1_i:
+    cmp x19, #3
+    beq end_loop1_i
+    mov x21, #0          // j = 0
 
-    // Decrementar el contador de elementos y repetir el bucle
-    sub w3, w3, #1
-    b suma_loop
+loop1_j:
+    cmp x21, #3
+    beq end_loop1_j
 
-print_resultado:
-    // Preparación para imprimir la matriz resultado
-    ldr x0, =msg_resultado     // Cargar el mensaje de resultado
-    ldr w1, [x2, #-36]         // Cargar resultado[0][0] en w1
-    ldr w2, [x2, #-32]         // Cargar resultado[0][1] en w2
-    ldr w3, [x2, #-28]         // Cargar resultado[0][2] en w3
-    ldr w4, [x2, #-24]         // Cargar resultado[1][0] en w4
-    ldr w5, [x2, #-20]         // Cargar resultado[1][1] en w5
-    ldr w6, [x2, #-16]         // Cargar resultado[1][2] en w6
-    ldr w7, [x2, #-12]         // Cargar resultado[2][0] en w7
-    ldr w8, [x2, #-8]          // Cargar resultado[2][1] en w8
-    ldr w9, [x2, #-4]          // Cargar resultado[2][2] en w9
+    // Mostrar prompt
+    adrp x0, msg_element
+    add x0, x0, :lo12:msg_element
+    mov x1, x19
+    mov x2, x21
+    bl printf
 
-    // Llamada a printf para mostrar la matriz resultado
-    bl printf                  // Llamada a printf para mostrar la matriz
+    // Leer elemento
+    sub sp, sp, #16      // Espacio para el input
+    mov x1, sp
+    adrp x0, fmt_input
+    add x0, x0, :lo12:fmt_input
+    bl scanf
 
-    // Salir del programa
-    mov x8, #93                // Código de salida para syscall exit en ARM64
-    mov x0, #0                 // Código de retorno 0
-    svc #0                     // Llamada al sistema
+    // Calcular posición y guardar
+    mov x22, #12         // 3 * 4 (tamaño de fila)
+    mul x23, x19, x22    // i * (3 * 4)
+    mov x24, #4
+    mul x25, x21, x24    // j * 4
+    add x23, x23, x25    // offset total
+    ldr w24, [sp]
+    str w24, [x20, x23]  // guardar en matrix1[i][j]
+    add sp, sp, #16      // restaurar sp
+
+    add x21, x21, #1     // j++
+    b loop1_j
+
+end_loop1_j:
+    add x19, x19, #1     // i++
+    b loop1_i
+
+end_loop1_i:
+    // Anunciar entrada de segunda matriz
+    adrp x0, msg_matrix2
+    add x0, x0, :lo12:msg_matrix2
+    bl printf
+
+    // Leer segunda matriz
+    adrp x20, matrix2
+    add x20, x20, :lo12:matrix2
+    mov x19, #0          // i = 0
+
+loop2_i:
+    cmp x19, #3
+    beq end_loop2_i
+    mov x21, #0          // j = 0
+
+loop2_j:
+    cmp x21, #3
+    beq end_loop2_j
+
+    // Mostrar prompt
+    adrp x0, msg_element
+    add x0, x0, :lo12:msg_element
+    mov x1, x19
+    mov x2, x21
+    bl printf
+
+    // Leer elemento
+    sub sp, sp, #16
+    mov x1, sp
+    adrp x0, fmt_input
+    add x0, x0, :lo12:fmt_input
+    bl scanf
+
+    // Calcular posición y guardar
+    mov x22, #12         // 3 * 4
+    mul x23, x19, x22    // i * (3 * 4)
+    mov x24, #4
+    mul x25, x21, x24    // j * 4
+    add x23, x23, x25    // offset total
+    ldr w24, [sp]
+    str w24, [x20, x23]  // guardar en matrix2[i][j]
+    add sp, sp, #16
+
+    add x21, x21, #1     // j++
+    b loop2_j
+
+end_loop2_j:
+    add x19, x19, #1     // i++
+    b loop2_i
+
+end_loop2_i:
+    // Realizar la suma
+    mov x19, #0          // i = 0
+
+sum_loop_i:
+    cmp x19, #3
+    beq end_sum_loop_i
+    mov x21, #0          // j = 0
+
+sum_loop_j:
+    cmp x21, #3
+    beq end_sum_loop_j
+
+    // Calcular offset
+    mov x22, #12         // 3 * 4
+    mul x23, x19, x22    // i * (3 * 4)
+    mov x24, #4
+    mul x25, x21, x24    // j * 4
+    add x23, x23, x25    // offset total
+
+    // Cargar elementos y sumar
+    adrp x20, matrix1
+    add x20, x20, :lo12:matrix1
+    ldr w24, [x20, x23]  // matrix1[i][j]
+
+    adrp x20, matrix2
+    add x20, x20, :lo12:matrix2
+    ldr w25, [x20, x23]  // matrix2[i][j]
+
+    add w24, w24, w25    // suma
+
+    adrp x20, result
+    add x20, x20, :lo12:result
+    str w24, [x20, x23]  // guardar resultado
+
+    add x21, x21, #1     // j++
+    b sum_loop_j
+
+end_sum_loop_j:
+    add x19, x19, #1     // i++
+    b sum_loop_i
+
+end_sum_loop_i:
+    // Mostrar resultado
+    adrp x0, msg_result
+    add x0, x0, :lo12:msg_result
+    bl printf
+
+    // Imprimir matriz resultado
+    mov x19, #0          // i = 0
+
+print_loop_i:
+    cmp x19, #3
+    beq end_print_loop_i
+    mov x21, #0          // j = 0
+
+print_loop_j:
+    cmp x21, #3
+    beq end_print_loop_j
+
+    // Calcular offset y cargar elemento
+    mov x22, #12         // 3 * 4
+    mul x23, x19, x22    // i * (3 * 4)
+    mov x24, #4
+    mul x25, x21, x24    // j * 4
+    add x23, x23, x25    // offset total
+
+    adrp x20, result
+    add x20, x20, :lo12:result
+    ldr w1, [x20, x23]   // cargar resultado[i][j]
+
+    // Imprimir elemento
+    adrp x0, fmt_output
+    add x0, x0, :lo12:fmt_output
+    bl printf
+
+    add x21, x21, #1     // j++
+    b print_loop_j
+
+end_print_loop_j:
+    // Nueva línea al final de cada fila
+    adrp x0, new_line
+    add x0, x0, :lo12:new_line
+    bl printf
+
+    add x19, x19, #1     // i++
+    b print_loop_i
+
+end_print_loop_i:
+    // Epílogo
+    ldp x29, x30, [sp], 16
+    ret
