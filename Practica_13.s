@@ -3,57 +3,48 @@
 // Descripción: Encontrar el valor minimo en un arreglo
 // Asciinema: 
 
-.section .data
-arreglo: .word 10, 25, 3, 48, 5, 30      // Arreglo de números enteros
-tamano: .word 6                          // Tamaño del arreglo
-msg_resultado: .asciz "El valor mínimo es: %d\n"
+   .data
+array:      .word 12, 45, 7, 23, 67, 89, 34, 56, 90, 14 // Arreglo de ejemplo
+arr_len:    .word 10                                    // Longitud del arreglo
+msg_result: .asciz "Arreglo: 12, 45, 7, 23, 67, 89, 34, 56, 90, 14 "
+msg_result: .asciz "El valor mínimo en el arreglo es: %d\n" // Mensaje para imprimir el resultado
 
-    .section .text
-    .global _start
+    .text
+    .global main
 
-_start:
-    // Cargar el tamaño del arreglo
-    ldr x1, =tamano            // Dirección del tamaño
-    ldr w1, [x1]               // Cargar el tamaño en w1 (número de elementos)
+main:
+    // Guardar el puntero de marco y el enlace de retorno
+    stp x29, x30, [sp, -16]!     // Reservar espacio en la pila
+    mov x29, sp                  // Establecer el puntero de marco
     
-    // Cargar la dirección del arreglo
-    ldr x2, =arreglo           // x2 apunta al inicio del arreglo
+    // Cargar la dirección y longitud del arreglo
+    adrp x0, arr_len             // Cargar la página base de arr_len en x0
+    add x0, x0, :lo12:arr_len    // Cargar el desplazamiento bajo de arr_len
+    ldr w1, [x0]                 // Obtener la longitud del arreglo en w1
+    adrp x2, array               // Cargar la página base de array en x2
+    add x2, x2, :lo12:array      // Cargar el desplazamiento bajo de array
 
-    // Inicializar el valor mínimo con el primer elemento
-    ldr w0, [x2]               // Cargar el primer elemento en w0 (valor mínimo actual)
-    add x3, x2, #4             // x3 apunta al segundo elemento (4 bytes por elemento, tamaño de `int`)
-    sub w1, w1, #1             // Decrementar el tamaño para contar ya el primer elemento
+    // Inicializar el valor mínimo
+    ldr w3, [x2]                 // Cargar el primer elemento del arreglo en w3 como mínimo inicial
+    add x2, x2, #4               // Avanzar a la siguiente posición en el arreglo
+    sub w1, w1, #1               // Decrementar el contador de elementos
 
-min_loop:
-    // Verificar si hemos terminado de recorrer el arreglo
-    cbz w1, print_resultado    // Si w1 es 0, terminamos el bucle
+loop:
+    cbz w1, end_loop             // Si el contador llega a cero, salir del bucle
+    ldr w4, [x2]                 // Cargar el siguiente elemento en w4
+    cmp w3, w4                   // Comparar w3 (mínimo actual) con w4 (nuevo valor)
+    csel w3, w3, w4, lt          // Si w3 < w4, mantener w3; si no, actualizar w3 con w4
+    add x2, x2, #4               // Avanzar a la siguiente posición en el arreglo
+    sub w1, w1, #1               // Decrementar el contador de elementos
+    b loop                       // Repetir el bucle
 
-    // Cargar el siguiente elemento en el arreglo
-    ldr w4, [x3]               // Cargar el valor actual en w4
+end_loop:
+    // Imprimir el resultado
+    adrp x0, msg_result          // Cargar la página base de msg_result en x0
+    add x0, x0, :lo12:msg_result // Cargar el desplazamiento bajo de msg_result
+    mov w1, w3                   // Mover el valor mínimo a w1 para printf
+    bl printf                    // Imprimir el valor mínimo en el arreglo
 
-    // Comparar el valor actual con el mínimo
-    cmp w4, w0                 // Comparar w4 (elemento actual) con w0 (mínimo actual)
-    bge skip_update            // Si w4 >= w0, saltar la actualización
-
-    // Actualizar el valor mínimo
-    mov w0, w4                 // w0 toma el nuevo valor mínimo
-
-skip_update:
-    // Avanzar al siguiente elemento
-    add x3, x3, #4             // Avanzar al siguiente elemento (4 bytes)
-    sub w1, w1, #1             // Decrementar el contador de elementos
-    b min_loop                 // Repetir el bucle
-
-print_resultado:
-    // Preparación para imprimir el resultado
-    ldr x1, =msg_resultado     // Cargar el mensaje
-    mov x2, w0                 // Valor mínimo en x2 para imprimir
-    mov x0, x1                 // Mensaje en x0
-
-    // Llamada a printf
-    bl printf                  // Llamamos a printf
-
-    // Salir del programa
-    mov x8, #93                // Código de salida para syscall exit en ARM64
-    mov x0, #0                 // Código de retorno 0
-    svc #0                     // Llamada al sistema
+    // Restaurar el puntero de pila y regresar
+    ldp x29, x30, [sp], 16       // Restaurar el puntero de marco y el enlace de retorno
+    ret                          // Regresar del programa
