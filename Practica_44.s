@@ -4,7 +4,7 @@
 // Asciinema: 
 
  .data
-    msg_seed: .asciz "Ingrese la semilla (número entero positivo): "
+    msg_seed: .asciz "Ingrese la semilla: "
     msg_count: .asciz "¿Cuántos números aleatorios desea generar? "
     msg_output: .asciz "Número aleatorio %d: %u\n"
     formato_in: .asciz "%ld"
