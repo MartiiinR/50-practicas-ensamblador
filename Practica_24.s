@@ -3,40 +3,54 @@
 // Descripción: Calcular la longitud de una cadena
 // Asciinema: 
 
-.section .data
-cadena: .asciz "Hola, mundo!"     // Cadena cuya longitud queremos calcular
-msg_resultado: .asciz "La longitud de la cadena es: %d\n"
 
-    .section .text
-    .global _start
+.data
+    msg_ingreso: .asciz "Ingrese una cadena: "
+    msg_resultado: .asciz "La longitud de la cadena es: %d\n"
+    buffer: .skip 100                    // Buffer para almacenar la cadena
+    formato_str: .asciz "%99s"          // Cambiado a %s para mejor manejo
 
-_start:
-    // Cargar la dirección de la cadena en x0
-    ldr x0, =cadena           // x0 apunta al inicio de la cadena
+.text
+.global main
+.align 2
 
-    // Inicializar el contador de longitud en 0
-    mov w1, #0                // w1 será el contador de caracteres
+main:
+    // Prólogo
+    stp x29, x30, [sp, -16]!           // Guardar frame pointer y link register
+    mov x29, sp
 
-calcular_longitud:
-    // Cargar el siguiente carácter en w2
-    ldrb w2, [x0, w1]         // Cargar el byte en la posición actual
-    cbz w2, imprimir_resultado // Si w2 es 0 (fin de cadena), salir del bucle
+    // Mostrar mensaje de ingreso
+    adrp x0, msg_ingreso               // Cargar dirección base
+    add x0, x0, :lo12:msg_ingreso      // Añadir offset
+    bl printf
 
-    // Incrementar el contador de longitud
-    add w1, w1, #1            // Incrementar el contador de longitud
+    // Leer cadena ingresada por el usuario
+    adrp x0, formato_str
+    add x0, x0, :lo12:formato_str
+    adrp x1, buffer
+    add x1, x1, :lo12:buffer
+    bl scanf
 
-    // Repetir el bucle
-    b calcular_longitud
+    // Calcular la longitud de la cadena
+    adrp x0, buffer
+    add x0, x0, :lo12:buffer
+    mov x1, #0                         // Inicializar contador en 0
 
-imprimir_resultado:
-    // Preparar el mensaje para imprimir la longitud
-    ldr x0, =msg_resultado    // Cargar el mensaje de resultado
-    mov x1, w1                // Mover la longitud calculada a x1 para imprimir
+contar_loop:
+    ldrb w2, [x0, x1]                 // Cargar byte actual
+    cbz w2, fin_conteo                // Si es 0, terminar
+    add x1, x1, #1                    // Incrementar contador
+    b contar_loop                     // Siguiente iteración
 
-    // Llamada a printf para mostrar la longitud
-    bl printf                 // Llamada a printf para mostrar el resultado
+fin_conteo:
+    // Mostrar el resultado
+    adrp x0, msg_resultado
+    add x0, x0, :lo12:msg_resultado
+    mov x2, x1                        // Mover longitud a x2
+    mov x1, x2                        // Copiar longitud a x1 para printf
+    bl printf
 
-    // Salir del programa
-    mov x8, #93               // Código de salida para syscall exit en ARM64
-    mov x0, #0                // Código de retorno 0
-    svc #0                    // Llamada al sistema
+    // Epílogo y retorno
+    mov w0, #0                        // Retornar 0
+    ldp x29, x30, [sp], 16           // Restaurar frame pointer y link register
+    ret
