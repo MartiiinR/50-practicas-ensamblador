@@ -3,47 +3,94 @@
 // Descripción: Convertir un numero binario a uno decimal
 // Asciinema: 
 
- .section .data
-binario: .asciz "11001"             // Número binario como cadena (25 en decimal)
-msg_resultado: .asciz "Número decimal: %d\n"
+.data
+    msg_input: .asciz "Ingrese un número binario (máximo 64 bits): "
+    msg_output: .asciz "El número en decimal es: %ld\n"
+    msg_error: .asciz "Error: Entrada inválida. Ingrese solo 0s y 1s.\n"
+    formato_in: .asciz "%s"
+    buffer: .skip 65  // 64 bits + 1 para el carácter nulo
 
-    .section .text
-    .global _start
+.text
+.global main
+.align 2
 
-_start:
-    // Cargar la dirección de la cadena binaria
-    ldr x0, =binario               // x0 apunta al inicio de la cadena binaria
+main:
+    stp x29, x30, [sp, -16]!
+    mov x29, sp
 
-    // Inicializar el valor decimal en 0
-    mov w1, #0                     // w1 será el acumulador para el número decimal
+    // Pedir número binario
+    adrp x0, msg_input
+    add x0, x0, :lo12:msg_input
+    bl printf
 
-convertir_loop:
-    // Cargar el siguiente carácter de la cadena binaria
-    ldrb w2, [x0], #1              // Cargar el byte actual en w2 y avanzar puntero x0
-    cbz w2, imprimir_resultado      // Si encontramos el fin de cadena (byte 0), terminamos
+    // Leer número binario
+    adrp x0, formato_in
+    add x0, x0, :lo12:formato_in
+    adrp x1, buffer
+    add x1, x1, :lo12:buffer
+    bl scanf
 
-    // Desplazar el acumulador a la izquierda (multiplicar por 2)
-    lsl w1, w1, #1                 // w1 = w1 * 2
+    // Convertir a decimal
+    adrp x0, buffer
+    add x0, x0, :lo12:buffer
+    bl binary_to_decimal
 
-    // Verificar si el carácter actual es '1'
-    cmp w2, #'1'
-    bne convertir_loop             // Si es '0', saltamos y repetimos el bucle
+    // Verificar si hubo error (resultado negativo)
+    cmp x0, #0
+    b.lt error_input
 
-    // Si es '1', sumamos 1 al acumulador
-    add w1, w1, #1                 // w1 = w1 + 1
+    // Imprimir resultado
+    mov x1, x0
+    adrp x0, msg_output
+    add x0, x0, :lo12:msg_output
+    bl printf
 
-    // Repetimos el bucle para el siguiente bit
-    b convertir_loop
+    b exit_program
 
-imprimir_resultado:
-    // Preparación para imprimir el resultado
-    ldr x0, =msg_resultado         // Cargar el mensaje de resultado
-    mov x1, w1                     // Mover el número decimal convertido a x1
+error_input:
+    adrp x0, msg_error
+    add x0, x0, :lo12:msg_error
+    bl printf
 
-    // Llamada a printf para mostrar el número decimal
-    bl printf                      // Llamada a printf para mostrar el resultado
-
+exit_program:
     // Salir del programa
-    mov x8, #93                    // Código de salida para syscall exit en ARM64
-    mov x0, #0                     // Código de retorno 0
-    svc #0                         // Llamada al sistema
+    mov x0, #0
+    ldp x29, x30, [sp], #16
+    ret
+
+// Función para convertir binario a decimal
+// Entrada: x0 = dirección de la cadena binaria
+// Salida: x0 = número decimal (o -1 si hay error)
+binary_to_decimal:
+    stp x29, x30, [sp, -16]!
+    mov x29, sp
+
+    mov x1, #0   // x1 = resultado decimal
+    mov x2, #0   // x2 = índice actual en la cadena
+
+convert_loop:
+    ldrb w3, [x0, x2]  // Cargar siguiente carácter
+    cbz w3, end_convert  // Si es nulo, terminar
+
+    cmp w3, #'0'
+    b.lt invalid_char
+    cmp w3, #'1'
+    b.gt invalid_char
+
+    // Multiplicar resultado actual por 2 y sumar nuevo bit
+    lsl x1, x1, #1
+    sub w3, w3, #'0'
+    add x1, x1, x3
+
+    add x2, x2, #1
+    b convert_loop
+
+end_convert:
+    mov x0, x1
+    ldp x29, x30, [sp], #16
+    ret
+
+invalid_char:
+    mov x0, #-1
+    ldp x29, x30, [sp], #16
+    ret
